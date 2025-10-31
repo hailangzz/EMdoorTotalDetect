@@ -3,7 +3,7 @@ import numpy as np
 from scipy.special import expit
 
 num_coords = 18
-min_score_thresh = 0.75
+min_score_thresh = 0.6
 min_suppression_threshold = 0.3
 num_keypoints = 7
 
