@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import os
 import time
+from rknn.api import RKNN
 
 import blazepalm_utils as but
 
@@ -12,7 +13,8 @@ import blazepalm_utils as but
 IMAGE_PATH = 'thumbs_up.jpg'
 SAVE_IMAGE_PATH = 'output.png'
 
-ONNX_MODEL = 'palm_detection_full.onnx'  # 使用 .rknn 模型
+TFLITE_MODEL = 'palm_detection_full.tflite'
+RKNN_MODEL = 'palm_detection_full.rknn'
 
 IMAGE_HEIGHT = 192
 IMAGE_WIDTH = 192
@@ -70,11 +72,37 @@ def recognize_from_image():
     if not CHANNEL_FIRST:
         input_data = input_data.transpose((0, 2, 3, 1))
 
-    import onnxruntime
-    net = onnxruntime.InferenceSession(ONNX_MODEL)
-    # inference
-    input_name = net.get_inputs()[0].name
-    preds = net.run(None, {input_name: input_data.astype(np.float32)})
+    # ======================
+    # 构建 / 加载 RKNN 模型
+    # ======================
+    rknn = RKNN()
+
+    rknn.config(mean_values=[[0, 0, 0]], std_values=[[1, 1, 1]], target_platform='rk3588')
+    # 加载模型
+    ret = rknn.load_tflite(
+        model=TFLITE_MODEL)
+    if ret != 0:
+        print('Load RKNN model failed!')
+        exit(ret)
+
+    # Build model
+    print('--> Building model')
+    ret = rknn.build(do_quantization=False)
+    if ret != 0:
+        print('Build model failed!')
+        exit(ret)
+    print('done')
+    ret = rknn.init_runtime()
+    # ======================
+    # 模型推理
+    # ======================
+    print("🚀 开始推理...")
+    outputs = rknn.inference(inputs=[input_data])
+
+    print(f"📤 获得 {len(outputs)} 个输出张量：")
+    for i, out in enumerate(outputs):
+        print(f"Output[{i}] shape: {out.shape}")
+    preds = outputs
 
     normalized_detections = but.postprocess(preds, anchor_path=ANCHOR_PATH, resolution=IMAGE_WIDTH)[0]
     detections = but.denormalize_detections(normalized_detections, scale, pad, resolution=IMAGE_WIDTH)
@@ -83,9 +111,11 @@ def recognize_from_image():
     # 显示与保存结果
     # ======================
     result_img = display_result(src_img, detections)
-    savepath = get_savepath(SAVE_IMAGE_PATH, "./")
+    savepath = get_savepath(SAVE_IMAGE_PATH, "/")
     cv2.imwrite(savepath, result_img)
     print(f'💾 结果已保存至: {savepath}')
+
+    rknn.release()
 
 def main():
     recognize_from_image()

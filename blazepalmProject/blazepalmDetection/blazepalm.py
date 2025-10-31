@@ -31,11 +31,11 @@ args = update_parser(parser)
 #Download palm_detection_full.tflite
 #https://github.com/google/mediapipe/tree/master/mediapipe/modules/palm_detection
 #python3 -m tf2onnx.convert --opset 11 --tflite palm_detection_full.tflite --output palm_detection.onnx
-MODEL_PATH = convert_tflite_to_onnx(tflite_file="./models/palm_detection_full.tflite", output_file="./models/palm_detection_full.onnx")
+MODEL_PATH = convert_tflite_to_onnx(tflite_file="models/palm_detection_full.tflite", output_file="models/palm_detection_full.onnx")
 
 IMAGE_HEIGHT = 192
 IMAGE_WIDTH = 192
-ANCHOR_PATH = './config/anchors_192.npy'
+ANCHOR_PATH = 'config/anchors_192.npy'
 CHANNEL_FIRST = False
 
 
@@ -101,7 +101,7 @@ def recognize_from_image():
 
     # postprocessing
     display_result(src_img, detections)
-    savepath = get_savepath(SAVE_IMAGE_PATH, "./")
+    savepath = get_savepath(SAVE_IMAGE_PATH, "/")
 
     cv2.imwrite(savepath, src_img)
 

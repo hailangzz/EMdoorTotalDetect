@@ -3,7 +3,8 @@ import numpy as np
 import sys
 import os
 import time
-import tensorflow as tf  # ✅ 用于 TFLite 推理
+from rknn.api import RKNN
+
 import blazepalm_utils as but
 
 # ======================
@@ -12,13 +13,12 @@ import blazepalm_utils as but
 IMAGE_PATH = 'thumbs_up.jpg'
 SAVE_IMAGE_PATH = 'output.png'
 
-TFLITE_MODEL = 'palm_detection_full.tflite'  # ✅ 改为 TFLite 模型路径
+RKNN_MODEL = 'palm_detection_full.rknn'  # 使用 .rknn 模型
 
 IMAGE_HEIGHT = 192
 IMAGE_WIDTH = 192
 ANCHOR_PATH = 'anchors_192.npy'
 CHANNEL_FIRST = False
-
 
 # ======================
 # 工具函数
@@ -29,7 +29,6 @@ def imread(filename, flags=cv2.IMREAD_COLOR):
     data = np.fromfile(filename, np.int8)
     img = cv2.imdecode(data, flags)
     return img
-
 
 def get_savepath(arg_path, src_path, prefix='', post_fix='_res', ext=None):
     if '.' in arg_path:
@@ -45,7 +44,6 @@ def get_savepath(arg_path, src_path, prefix='', post_fix='_res', ext=None):
         os.makedirs(dirname, exist_ok=True)
     return new_path
 
-
 def display_result(img, detections, with_keypoints=True):
     if detections.ndim == 1:
         detections = np.expand_dims(detections, axis=0)
@@ -56,69 +54,70 @@ def display_result(img, detections, with_keypoints=True):
         img = cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 1)
         if with_keypoints:
             for k in range(n_keypoints):
-                kp_x = int(detections[i, 4 + k * 2])
-                kp_y = int(detections[i, 4 + k * 2 + 1])
+                kp_x = int(detections[i, 4 + k*2])
+                kp_y = int(detections[i, 4 + k*2 + 1])
                 cv2.circle(img, (kp_x, kp_y), 2, (0, 0, 255), thickness=2)
     return img
-
 
 # ======================
 # 主推理函数
 # ======================
 def recognize_from_image():
-    # ======================
-    # 加载输入图像
-    # ======================
+    # 加载图片
     src_img = imread(IMAGE_PATH)
     img256, _, scale, pad = but.resize_pad(src_img[:, :, ::-1], IMAGE_WIDTH)
-    input_data = img256.astype('float32') / 255.0
-    input_data = np.expand_dims(input_data, axis=0)  # [1, 192, 192, 3]
-
-    print("✅ 图像预处理完成, shape =", input_data.shape)
+    input_data = img256.astype('float32') / 255.
+    input_data = np.expand_dims(np.moveaxis(input_data, -1, 0), 0)
+    if not CHANNEL_FIRST:
+        input_data = input_data.transpose((0, 2, 3, 1))
 
     # ======================
-    # 加载 TFLite 模型
+    # 直接加载 RKNN 模型
     # ======================
-    print(f"🔍 加载 TFLite 模型: {TFLITE_MODEL}")
-    interpreter = tf.lite.Interpreter(model_path=TFLITE_MODEL)
-    interpreter.allocate_tensors()
+    rknn = RKNN()
 
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
+    # 设置目标平台为模拟器
+    rknn.config(target_platform='rk3588', mean_values=[[0, 0, 0]], std_values=[[1, 1, 1]])
 
-    print("📥 输入张量信息:", input_details)
-    print("📤 输出张量信息:")
-    for i, od in enumerate(output_details):
-        print(f"  Output[{i}]: name={od['name']}, shape={od['shape']}")
+    print(f'加载 RKNN 模型: {RKNN_MODEL}')
+    ret = rknn.load_rknn(RKNN_MODEL)
+    if ret != 0:
+        print('❌ 加载 RKNN 模型失败！')
+        exit(ret)
+
+    # 初始化 RKNN runtime
+    print('--> 初始化 RKNN runtime...')
+    ret = rknn.init_runtime(target='rk3588')
+    if ret != 0:
+        print('❌ 初始化 RKNN runtime 失败！')
+        exit(ret)
 
     # ======================
     # 模型推理
     # ======================
     print("🚀 开始推理...")
-    interpreter.set_tensor(input_details[0]['index'], input_data)
-    interpreter.invoke()
+    outputs = rknn.inference(inputs=[input_data])
 
-    outputs = [interpreter.get_tensor(od['index']) for od in output_details]
-    print(f"✅ 推理完成，获得 {len(outputs)} 个输出张量")
+    print(f"📤 获得 {len(outputs)} 个输出张量：")
+    for i, out in enumerate(outputs):
+        print(f"Output[{i}] shape: {out.shape}")
+    preds = outputs
 
-    # ======================
-    # 后处理
-    # ======================
-    normalized_detections = but.postprocess(outputs, anchor_path=ANCHOR_PATH, resolution=IMAGE_WIDTH)[0]
+    normalized_detections = but.postprocess(preds, anchor_path=ANCHOR_PATH, resolution=IMAGE_WIDTH)[0]
     detections = but.denormalize_detections(normalized_detections, scale, pad, resolution=IMAGE_WIDTH)
 
     # ======================
     # 显示与保存结果
     # ======================
     result_img = display_result(src_img, detections)
-    savepath = get_savepath(SAVE_IMAGE_PATH, "./")
+    savepath = get_savepath(SAVE_IMAGE_PATH, "/")
     cv2.imwrite(savepath, result_img)
     print(f'💾 结果已保存至: {savepath}')
 
+    rknn.release()
 
 def main():
     recognize_from_image()
-
 
 if __name__ == '__main__':
     main()

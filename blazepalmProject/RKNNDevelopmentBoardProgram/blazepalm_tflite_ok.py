@@ -111,7 +111,7 @@ def recognize_from_image():
     # 显示与保存结果
     # ======================
     result_img = display_result(src_img, detections)
-    savepath = get_savepath(SAVE_IMAGE_PATH, "./")
+    savepath = get_savepath(SAVE_IMAGE_PATH, "/")
     cv2.imwrite(savepath, result_img)
     print(f'💾 结果已保存至: {savepath}')
 
