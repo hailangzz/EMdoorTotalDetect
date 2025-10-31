@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import sys
 import os
-import time
 from rknn.api import RKNN
 
 import blazepalm_utils as but
@@ -20,9 +19,7 @@ IMAGE_WIDTH = 192
 ANCHOR_PATH = 'anchors_192.npy'
 CHANNEL_FIRST = False
 
-# ======================
-# 工具函数
-# ======================
+
 def imread(filename, flags=cv2.IMREAD_COLOR):
     if not os.path.isfile(filename):
         sys.exit(f"❌ 文件不存在: {filename}")
