@@ -13,8 +13,7 @@ import blazepalm_utils as but
 IMAGE_PATH = 'thumbs_up.jpg'
 SAVE_IMAGE_PATH = 'output.png'
 
-TFLITE_MODEL = 'palm_detection_full.tflite'
-RKNN_MODEL = 'palm_detection_full.rknn'
+RKNN_MODEL = 'palm_detection_full.rknn'  # 使用 .rknn 模型
 
 IMAGE_HEIGHT = 192
 IMAGE_WIDTH = 192
@@ -73,26 +72,26 @@ def recognize_from_image():
         input_data = input_data.transpose((0, 2, 3, 1))
 
     # ======================
-    # 构建 / 加载 RKNN 模型
+    # 直接加载 RKNN 模型
     # ======================
     rknn = RKNN()
 
-    rknn.config(mean_values=[[0, 0, 0]], std_values=[[1, 1, 1]], target_platform='rk3588')
-    # 加载模型
-    ret = rknn.load_tflite(
-        model=TFLITE_MODEL)
+    # 设置目标平台为模拟器
+    rknn.config(target_platform='rk3588', mean_values=[[0, 0, 0]], std_values=[[1, 1, 1]])
+
+    print(f'加载 RKNN 模型: {RKNN_MODEL}')
+    ret = rknn.load_rknn(RKNN_MODEL)
     if ret != 0:
-        print('Load RKNN model failed!')
+        print('❌ 加载 RKNN 模型失败！')
         exit(ret)
 
-    # Build model
-    print('--> Building model')
-    ret = rknn.build(do_quantization=False)
+    # 初始化 RKNN runtime
+    print('--> 初始化 RKNN runtime...')
+    ret = rknn.init_runtime(target='simulator')
     if ret != 0:
-        print('Build model failed!')
+        print('❌ 初始化 RKNN runtime 失败！')
         exit(ret)
-    print('done')
-    ret = rknn.init_runtime()
+
     # ======================
     # 模型推理
     # ======================
