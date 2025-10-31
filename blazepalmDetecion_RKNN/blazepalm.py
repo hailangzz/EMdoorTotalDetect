@@ -87,7 +87,7 @@ def recognize_from_image():
 
     # 初始化 RKNN runtime
     print('--> 初始化 RKNN runtime...')
-    ret = rknn.init_runtime(target='simulator')
+    ret = rknn.init_runtime(target='rk3588')
     if ret != 0:
         print('❌ 初始化 RKNN runtime 失败！')
         exit(ret)
