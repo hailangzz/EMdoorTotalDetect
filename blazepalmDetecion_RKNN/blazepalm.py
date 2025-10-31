@@ -77,38 +77,22 @@ def recognize_from_image():
     # ======================
     rknn = RKNN()
 
-    if not os.path.exists(RKNN_MODEL):
-        print(f'🛠️ 转换 {TFLITE_MODEL} → {RKNN_MODEL} ...')
-        rknn.config(
-            mean_values=[[0, 0, 0]],
-            std_values=[[1, 1, 1]],
-            target_platform='rk3588'  # 目标平台
-        )
-
-        ret = rknn.load_tflite(model=TFLITE_MODEL)
-        if ret != 0:
-            print('❌ 载入 TFLite 模型失败')
-            return
-
-        ret = rknn.build(do_quantization=False)
-        if ret != 0:
-            print('❌ 构建 RKNN 模型失败')
-            return
-
-        rknn.export_rknn(RKNN_MODEL)
-        print('✅ 模型已导出:', RKNN_MODEL)
-    else:
-        print(f'✅ 直接加载已有模型: {RKNN_MODEL}')
-        rknn.load_rknn(RKNN_MODEL)
-
-    # ======================
-    # 初始化运行时
-    # ======================
-    ret = rknn.init_runtime(target='simulator')
+    rknn.config(mean_values=[[0, 0, 0]], std_values=[[1, 1, 1]], target_platform='rk3588')
+    # 加载模型
+    ret = rknn.load_tflite(
+        model=TFLITE_MODEL)
     if ret != 0:
-        print('❌ 初始化 RKNN runtime 失败')
-        return
+        print('Load RKNN model failed!')
+        exit(ret)
 
+    # Build model
+    print('--> Building model')
+    ret = rknn.build(do_quantization=False)
+    if ret != 0:
+        print('Build model failed!')
+        exit(ret)
+    print('done')
+    ret = rknn.init_runtime()
     # ======================
     # 模型推理
     # ======================
@@ -118,11 +102,8 @@ def recognize_from_image():
     print(f"📤 获得 {len(outputs)} 个输出张量：")
     for i, out in enumerate(outputs):
         print(f"Output[{i}] shape: {out.shape}")
-
-    # ======================
-    # 后处理
-    # ======================
     preds = outputs
+
     normalized_detections = but.postprocess(preds, anchor_path=ANCHOR_PATH, resolution=IMAGE_WIDTH)[0]
     detections = but.denormalize_detections(normalized_detections, scale, pad, resolution=IMAGE_WIDTH)
 
@@ -136,10 +117,8 @@ def recognize_from_image():
 
     rknn.release()
 
-
 def main():
     recognize_from_image()
-
 
 if __name__ == '__main__':
     main()
