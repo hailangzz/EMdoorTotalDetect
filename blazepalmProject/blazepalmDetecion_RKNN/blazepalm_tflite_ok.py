@@ -10,7 +10,7 @@ import blazepalm_utils as but
 # ======================
 # 基本配置
 # ======================
-IMAGE_PATH = '../RKNNDevelopmentBoardProgram/thumbs_up.jpg'
+IMAGE_PATH = '../RKNNDevelopmentBoardProgram/single_image_detection/thumbs_up.jpg'
 SAVE_IMAGE_PATH = 'output.png'
 
 TFLITE_MODEL = 'palm_detection_full.tflite'
@@ -18,7 +18,7 @@ RKNN_MODEL = 'palm_detection_full.rknn'
 
 IMAGE_HEIGHT = 192
 IMAGE_WIDTH = 192
-ANCHOR_PATH = '../RKNNDevelopmentBoardProgram/anchors_192.npy'
+ANCHOR_PATH = '../RKNNDevelopmentBoardProgram/single_image_detection/anchors_192.npy'
 CHANNEL_FIRST = False
 
 # ======================
