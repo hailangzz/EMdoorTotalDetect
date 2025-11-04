@@ -1,7 +1,7 @@
 import threading
 import fastdds
 import RGBData
-import signal
+
 
 class _RGBDataListener(fastdds.DataReaderListener):
     """内部监听器，用于更新最新数据"""

@@ -14,7 +14,7 @@ class RKNNInference:
         """
         self.rknn_config = {"target_platform": 'rk3588',
                             "mean_values": [[0, 0, 0]],
-                            "std_values": [[1, 1, 1]],
+                            "std_values": [[255, 255, 255]],
                             }
 
 
@@ -28,7 +28,6 @@ class RKNNInference:
         self.rknn = RKNN()
         # 初始化模型
         self._load_model()
-        self.cap = None  # 摄像头对象
 
     def _load_model(self):
         print(f"load rknn model: {self.model_path}")
@@ -43,18 +42,12 @@ class RKNNInference:
 
         print("RKNN init succeed!")
 
-    def open_camera(self, camera_index=0):
-        """打开摄像头"""
-        self.cap = cv2.VideoCapture(camera_index, cv2.CAP_V4L2)
-        if not self.cap.isOpened():
-            raise RuntimeError(f"can not open camera: /dev/video{camera_index}")
-        print(f"the camera /dev/video{camera_index} open succeed!")
 
     def _preprocess(self, frame):
         """预处理摄像头图像"""
 
         img256, _, scale, pad = but.resize_pad(frame[:, :, ::-1], self.input_height_size)
-        input_data = img256.astype('float32') / 255.
+        input_data = img256.astype('float32')
         input_data = np.expand_dims(np.moveaxis(input_data, -1, 0), 0)
         if not self.image_channel_first:
             input_data = input_data.transpose((0, 2, 3, 1))
@@ -64,24 +57,18 @@ class RKNNInference:
 
         return input_data
 
-    def infer(self):
+    def infer(self,frame_rgb_image_data):
         """从摄像头读取一帧并推理"""
-        if self.cap is None:
-            raise RuntimeError("摄像头未打开，请先调用 open_camera()")
+        if frame_rgb_image_data is None:
+            raise RuntimeError("fastdds frame image is error!")
 
-        ret, frame = self.cap.read()
-        if not ret:
-            raise RuntimeError("摄像头读取帧失败")
-
-        input_data = self._preprocess(frame)
+        input_data = self._preprocess(frame_rgb_image_data)
         outputs = self.rknn.inference(inputs=[input_data])
-        return outputs, frame
+        return outputs, frame_rgb_image_data
 
     def release(self):
-        """释放摄像头和 RKNN 资源"""
-        if self.cap:
-            self.cap.release()
-            self.cap = None
+        """释放RKNN 资源"""
+
         if self.rknn:
             self.rknn.release()
             self.rknn = None
