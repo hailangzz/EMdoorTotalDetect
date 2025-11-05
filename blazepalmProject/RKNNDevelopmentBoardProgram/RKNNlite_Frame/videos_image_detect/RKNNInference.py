@@ -13,22 +13,21 @@ class RKNNInference:
         :param std_values: 标准差，用于归一化
         """
 
+
         self.model_path = model_info["RKNN_MODEL"]
         self.input_height_size = model_info["IMAGE_HEIGHT"]
         self.input_width_size = model_info["IMAGE_WIDTH"]
         self.image_channel_first = model_info["CHANNEL_FIRST"]
         self.image_resize_pad_info = {"scale":0,"pad":0}
 
-        self.infer_image_data = np.array(0)
-        self.outputs = list()
-        self.detections = list()
-
+        self.cap = None  # 摄像头对象
         self.rknn_lite = RKNNLite()
         # 初始化模型
         self._load_model()
 
+
     def _load_model(self):
-        print(f"load rknn_lite model: {self.model_path}")
+        print(f"load rknn model: {self.model_path}")
         ret = self.rknn_lite.load_rknn(self.model_path)
         if ret != 0:
             raise RuntimeError(f"load rknn model is fail: {ret}")
@@ -38,8 +37,14 @@ class RKNNInference:
         if ret != 0:
             raise RuntimeError(f"init rknn runtime is fail: {ret}")
 
-        print("RKNN lite init succeed!")
+        print("RKNN init succeed!")
 
+    def open_camera(self, videos_path):
+        """打开摄像头"""
+        self.cap = cv2.VideoCapture(videos_path)
+        if not self.cap.isOpened():
+            raise RuntimeError(f"can not open camera: {videos_path}")
+        print(f"the videos {videos_path} open succeed!")
 
     def _preprocess(self, frame):
         """预处理摄像头图像"""
@@ -55,19 +60,24 @@ class RKNNInference:
 
         return input_data
 
-    def infer(self,):
+    def infer(self):
         """从摄像头读取一帧并推理"""
-        if self.infer_image_data is None:
-            raise RuntimeError("fastdds frame image is error!")
+        if self.cap is None:
+            raise RuntimeError("摄像头未打开，请先调用 open_camera()")
 
-        input_data = self._preprocess(self.infer_image_data)
+        ret, frame = self.cap.read()
+        if not ret:
+            raise RuntimeError("摄像头读取帧失败")
+
+        input_data = self._preprocess(frame)
         outputs = self.rknn_lite.inference(inputs=[input_data])
-        self.outputs = outputs
-
+        return outputs, frame
 
     def release(self):
-        """释放RKNN 资源"""
-
+        """释放摄像头和 RKNN 资源"""
+        if self.cap:
+            self.cap.release()
+            self.cap = None
         if self.rknn_lite:
             self.rknn_lite.release()
             self.rknn_lite = None

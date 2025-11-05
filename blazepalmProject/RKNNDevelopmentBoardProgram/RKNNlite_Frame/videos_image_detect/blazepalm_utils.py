@@ -317,37 +317,3 @@ def display_result(img, detections, with_keypoints=True):
                 kp_y = int(detections[i, 4 + k*2 + 1])
                 cv2.circle(img, (kp_x, kp_y), 2, (0, 0, 255), thickness=2)
     return img
-
-def yuv420_to_rgb(data_bytes, width, height):
-    """
-    data_bytes: bytes 或 bytearray，YUV420 (I420) 格式
-    width, height: 图像尺寸
-    返回: BGR numpy 数组 (H, W, 3)
-    """
-    yuv = np.frombuffer(data_bytes, dtype=np.uint8).reshape((height * 3 // 2, width))
-    # rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2RGB_NV21)
-    rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_NV21)
-    return rgb
-
-class HandStateController:
-    def __init__(self, threshold=7):
-        self.threshold = threshold  # 连续帧阈值
-        self.identification_number = 4
-        self.counter = 0            # 当前累计帧数
-        self.state = False          # 当前状态输出
-
-    def update(self, detected: bool):
-        """
-        detected: bool, 当前帧是否检测到手
-        返回: bool, 当前平滑后的状态
-        """
-        if detected:
-            self.counter = min(self.counter + 1, self.threshold)  # 限制最大不超过 threshold
-        else:
-            self.counter = max(self.counter - 1, 0)  # 限制最小不低于 0
-
-        if self.counter >= self.identification_number:
-            self.state = True
-        else:
-            self.state = False
-

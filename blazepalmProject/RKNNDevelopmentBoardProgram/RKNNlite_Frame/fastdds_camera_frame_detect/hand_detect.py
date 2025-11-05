@@ -34,6 +34,7 @@ logging._nameToLevel.update({'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40
 
 
 def main():
+    logger = debug.ProjectDebug()
 
     rospy.init_node("shelf_rgb_ai", anonymous=True)
     img_pub = rospy.Publisher("/shelf_processed_img", Image, queue_size=1)
@@ -51,7 +52,7 @@ def main():
     rknn_infer = RKNNInference.RKNNInference(BlazePalmModelInfo)
     detect_hand = False
 
-    detct_umbers = 0
+    # detct_umbers = 0
     try:
         while not rospy.is_shutdown():
             latest = subscriber.get_latest()
@@ -63,49 +64,47 @@ def main():
                 height = latest["height"]
                 data_bytes = bytes(latest["data_ptr"])
                 #获取到rgb_frame,用来AI处理
-                rgb_frame = but.yuv420_to_rgb(data_bytes, width, height)
+                rknn_infer.infer_image_data = but.yuv420_to_rgb(data_bytes, width, height)
 
-
-                # print(rgb_frame)
                 """
                 此处编写AI检测代码                
                 """
-                outputs, frame = rknn_infer.infer(rgb_frame)
-                normalized_detections = but.postprocess(outputs, anchor_path=BlazePalmModelInfo["ANCHOR_PATH"],
+                rknn_infer.infer()
+                normalized_detections = but.postprocess(rknn_infer.outputs, anchor_path=BlazePalmModelInfo["ANCHOR_PATH"],
                                                         resolution=BlazePalmModelInfo["IMAGE_WIDTH"])[0]
                 detections = but.denormalize_detections(normalized_detections,
                                                         rknn_infer.image_resize_pad_info["scale"],
                                                         rknn_infer.image_resize_pad_info["pad"],
                                                         resolution=BlazePalmModelInfo["IMAGE_WIDTH"])
 
-                result_img = but.display_result(frame, detections)  # 添加检测框，到图像数据中
-                savepath = but.get_savepath(str(detct_umbers)+'.jpg', "./rgb_images")
-                if detct_umbers%10==0:
-                    cv2.imwrite(savepath, result_img)
-                detct_umbers+=1
+                result_img = but.display_result(rknn_infer.infer_image_data, detections)  # 添加检测框，到图像数据中
 
-                # if detections.shape[0]>=1:
-                #     print("detect hand object numbers %d!",detections.shape[0])
-                #
-                #     detect_hand = True
-                # else:
-                #     detect_hand = False
-                #
-                # state = controller.update(detect_hand)
-                # if state:
-                #     result_img = but.display_result(frame, detections)  # 添加检测框，到图像数据中
-                #
-                #     debug.save_frame_rgb_image(result_img)
-                #     # 如果检测到手,则发布
-                #     detect_pub.publish(Empty())
-                #     # 发布处理后图像
-                #     processed_img = bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
-                #     img_pub.publish(processed_img)
-                #     print('detect hand object!!')
+                # if detections.shape[0]>0:
+                #     logger.save_frame_rgb_image(result_img)
+                # detect_object_num = str(detections.shape[0])
+                # logger.save_detect_object_log("detect hand object numbers is "+detect_object_num+'\n')
+                # detct_umbers+=1
+                # if detct_umbers>500:
+                #     break
+
+
+                if detections.shape[0]>=1:
+                    detect_hand = True
+                else:
+                    detect_hand = False
+
+                controller.update(detect_hand)
+                if controller.state:
+                    # 如果检测到手,则发布
+                    detect_pub.publish(Empty())
+                    # 发布处理后图像
+                    processed_img = bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
+                    img_pub.publish(processed_img)
+                    print('detect hand object event is success!!')
                 # else:
                 #     print('null of hand detect')
 
-            time.sleep(0.03)  # 30ms，约33FPS
+            # time.sleep(0.03)  # 30ms，约33FPS
     except KeyboardInterrupt:
         print("用户中断，退出...")
     finally:
