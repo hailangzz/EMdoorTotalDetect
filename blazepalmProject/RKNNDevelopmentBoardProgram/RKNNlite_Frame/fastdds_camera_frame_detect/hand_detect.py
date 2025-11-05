@@ -51,6 +51,7 @@ def main():
     rknn_infer = RKNNInference.RKNNInference(BlazePalmModelInfo)
     detect_hand = False
 
+    detct_umbers = 0
     try:
         while not rospy.is_shutdown():
             latest = subscriber.get_latest()
@@ -77,26 +78,32 @@ def main():
                                                         rknn_infer.image_resize_pad_info["pad"],
                                                         resolution=BlazePalmModelInfo["IMAGE_WIDTH"])
 
+                result_img = but.display_result(frame, detections)  # 添加检测框，到图像数据中
+                savepath = but.get_savepath(str(detct_umbers)+'.jpg', "./rgb_images")
+                if detct_umbers%10==0:
+                    cv2.imwrite(savepath, result_img)
+                detct_umbers+=1
 
-                if detections.shape[0]>=1:
-                    print("detect hand object numbers %d!",detections.shape[0])
-
-                    detect_hand = True
-                else:
-                    detect_hand = False
-
-                state = controller.update(detect_hand)
-                if state:
-                    result_img = but.display_result(frame, detections)  # 添加检测框，到图像数据中
-                    debug.save_frame_rgb_image(result_img)
-                    # 如果检测到手,则发布
-                    detect_pub.publish(Empty())
-                    # 发布处理后图像
-                    processed_img = bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
-                    img_pub.publish(processed_img)
-                    print('detect hand object!!')
-                else:
-                    print('null of hand detect')
+                # if detections.shape[0]>=1:
+                #     print("detect hand object numbers %d!",detections.shape[0])
+                #
+                #     detect_hand = True
+                # else:
+                #     detect_hand = False
+                #
+                # state = controller.update(detect_hand)
+                # if state:
+                #     result_img = but.display_result(frame, detections)  # 添加检测框，到图像数据中
+                #
+                #     debug.save_frame_rgb_image(result_img)
+                #     # 如果检测到手,则发布
+                #     detect_pub.publish(Empty())
+                #     # 发布处理后图像
+                #     processed_img = bridge.cv2_to_imgmsg(result_img, encoding="rgb8")
+                #     img_pub.publish(processed_img)
+                #     print('detect hand object!!')
+                # else:
+                #     print('null of hand detect')
 
             time.sleep(0.03)  # 30ms，约33FPS
     except KeyboardInterrupt:

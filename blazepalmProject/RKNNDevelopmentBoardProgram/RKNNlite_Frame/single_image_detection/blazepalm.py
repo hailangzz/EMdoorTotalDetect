@@ -10,7 +10,8 @@ import blazepalm_utils as but
 # ======================
 # 基本配置
 # ======================
-IMAGE_PATH = 'thumbs_up.jpg'
+# IMAGE_PATH = 'thumbs_up.jpg'
+IMAGE_PATH = "fastdds_test.png"
 SAVE_IMAGE_PATH = 'output.png'
 
 RKNN_MODEL = 'palm_detection_full.rknn'  # 使用 .rknn 模型
