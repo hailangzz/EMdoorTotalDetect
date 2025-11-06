@@ -329,6 +329,34 @@ def yuv420_to_rgb(data_bytes, width, height):
     rgb = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_NV21)
     return rgb
 
+
+def image_crop_ellipse(rgb_img, image_crop_config=None):
+    """
+    在原始 RGB 图像上裁切椭圆区域，其他区域置为黑色
+    center: (x, y) 椭圆中心，默认图像中心
+    axes: (a, b) 椭圆半轴长度，默认覆盖整个图像
+    """
+    center = ()
+    axes = ()
+    height, width = rgb_img.shape[:2]
+    if image_crop_config is None:
+        # 默认中心为图像中心
+        center = (width // 2, height // 2)
+        # 默认椭圆半轴覆盖整个图像
+        axes = (width // 2, height // 2)
+    else:
+        center = (image_crop_config["center_x"], image_crop_config["center_y"])
+        axes = (image_crop_config["axes_w"], image_crop_config["axes_h"])
+    # 创建 mask
+    mask = np.zeros((height, width), dtype=np.uint8)
+    # 画椭圆
+    cv2.ellipse(mask, center, axes, 0, 0, 360, 255, -1)
+    # 应用 mask
+    masked_img = cv2.bitwise_and(rgb_img, rgb_img, mask=mask)
+
+    return masked_img
+
+
 class HandStateController:
     def __init__(self, threshold=7):
         self.threshold = threshold  # 连续帧阈值

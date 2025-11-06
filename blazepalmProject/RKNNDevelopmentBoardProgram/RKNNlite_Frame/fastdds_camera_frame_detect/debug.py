@@ -41,11 +41,8 @@ class ProjectDebug:
 
     def save_frame_rgb_image(self,rgb_frame):        # 保存间隔（秒）
 
-
-        self.debug_info["image_debug"]["frame_count"]+=1
-
+        self.debug_info["image_debug"]["frame_count"] += 1
         # if self.debug_info["image_debug"]["frame_count"]%10==0:
-
         # 图片文件名
         filename = os.path.join(self.save_image_dir, str(self.debug_info["image_debug"]["save_image_number"])+".png")
         # 保存图片
@@ -53,8 +50,7 @@ class ProjectDebug:
         cv2.imwrite(filename, rgb_frame)
         self.debug_info["image_debug"]["save_image_number"] += 1
 
-
-    def save_detect_object_log(self,message: str):
+    def save_detect_object_log(self, message: str):
 
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_message = f"[{timestamp}] {message}\n"

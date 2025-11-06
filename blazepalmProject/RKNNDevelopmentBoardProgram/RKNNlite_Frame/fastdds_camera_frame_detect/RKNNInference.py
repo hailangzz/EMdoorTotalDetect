@@ -22,6 +22,7 @@ class RKNNInference:
         self.infer_image_data = np.array(0)
         self.outputs = list()
         self.detections = list()
+        self.result_img = np.array(0)
 
         self.rknn_lite = RKNNLite()
         # 初始化模型
@@ -63,7 +64,6 @@ class RKNNInference:
         input_data = self._preprocess(self.infer_image_data)
         outputs = self.rknn_lite.inference(inputs=[input_data])
         self.outputs = outputs
-
 
     def release(self):
         """释放RKNN 资源"""
