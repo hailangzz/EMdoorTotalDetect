@@ -1,6 +1,7 @@
 import rospy
 from sensor_msgs.msg import Image
 from std_msgs.msg import Empty
+from std_msgs.msg import Bool
 from cv_bridge import CvBridge
 
 from rgb_subscriber import RGBDataSubscriber
@@ -56,6 +57,9 @@ class HandDetect:
         self.bridge = None
         self.subscriber = None
         self.create_rospy_topics()
+
+        self.send_topic_time_thread = 1.0
+        self.last_send_topic_time = time.time()
 
     def read_config_info(self):
 
@@ -121,15 +125,22 @@ class HandDetect:
             # self.logger.save_frame_rgb_image(self.rknn_infer.result_img)
         else:
             detect_hand_bool = False
-        self.controller.update(detect_hand_bool)
+        self.controller.update(detect_hand_bool)   # 更新目标检测结果状态
+        self.send_hand_detcet_event_info()        # 发送目标检测结果状态信息
 
-        if self.controller.state:
+    def send_hand_detcet_event_info(self):
+        # 作用：每间隔1秒钟，发送一次手部检测结果的状态值
+
+        current_time = time.time()
+        delta_t = current_time - self.last_send_topic_time
+
+        if delta_t > self.send_topic_time_thread:
             # 如果检测到手,则发布
-            self.detect_pub.publish(Empty())
-            # 发布处理后图像
-            processed_img = self.bridge.cv2_to_imgmsg(self.rknn_infer.result_img, encoding="rgb8")
-            self.img_pub.publish(processed_img)
-            print('detect hand object event is success!!')
+            self.detect_pub.publish(Bool(self.controller.event_state))
+            # # 发布处理后图像
+            # processed_img = self.bridge.cv2_to_imgmsg(self.rknn_infer.result_img, encoding="rgb8")
+            # self.img_pub.publish(processed_img)
+            self.last_send_topic_time = current_time
 
     def __del__(self):
         self.subscriber.close()
