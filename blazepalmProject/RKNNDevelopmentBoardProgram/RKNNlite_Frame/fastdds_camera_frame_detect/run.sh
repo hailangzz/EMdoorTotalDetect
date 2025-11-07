@@ -1,6 +1,17 @@
 #!/bin/bash
+# 确保出错时脚本立即退出
+set -e
+
+# 记录启动时间
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting hand detect..." >> /home/robot/zhangzhuo/run.log
+
+# 切换工作目录
+cd /home/robot/zhangzhuo
+
+# 激活conda环境
 source /home/robot/miniforge3/bin/activate toolkit2
+# 加载fastdds环境变量
 source /home/robot/zhangzhuo/fastdds_env/setup.bash
 
-#python3 hand_detect.py
-python3 main_hand_detect.py
+# 启动python脚本，并将日志写入文件
+python3 main_hand_detect.py >> /home/robot/zhangzhuo/run.log 2>&1
