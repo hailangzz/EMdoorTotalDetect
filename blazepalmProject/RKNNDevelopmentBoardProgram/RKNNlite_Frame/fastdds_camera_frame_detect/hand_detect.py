@@ -60,6 +60,7 @@ class HandDetect:
 
         self.send_topic_time_thread = 1.0
         self.last_send_topic_time = time.time()
+        self.last_hand_detect_state = False
 
     def read_config_info(self):
 
@@ -76,12 +77,13 @@ class HandDetect:
     def create_rospy_topics(self):
         rospy.init_node("shelf_rgb_ai", anonymous=True)
         self.img_pub = rospy.Publisher("/shelf_processed_img", Image, queue_size=1)
-        self.detect_pub = rospy.Publisher("/detect_hand", Empty, queue_size=1)
+        self.detect_pub = rospy.Publisher("/detect_hand", Bool, queue_size=1)
         self.bridge = CvBridge()
         self.subscriber = RGBDataSubscriber(topic_name="RgbTopic", domain_id=0)
 
     def infer_detect(self):
         try:
+
             while not rospy.is_shutdown():
                 latest = self.subscriber.get_latest()
                 if latest is not None:
@@ -95,9 +97,13 @@ class HandDetect:
                     origin_bgr_image = but.yuv420_to_rgb(data_bytes, width, height)
                     self.rknn_infer.infer_image_data = but.image_crop_ellipse(origin_bgr_image,
                                                                               self.bgr_origin_image_crop_config)
+
                     self.rknn_infer.infer()
                     self.post_processing()
                     self.controller_hand_detect_state()
+                else:
+                    pass
+                    # self.logger.save_detect_object_log("subscriber.get_latest() is None!\n")
 
         except KeyboardInterrupt:
             print("user interrupt，quit...")
@@ -125,6 +131,7 @@ class HandDetect:
             # self.logger.save_frame_rgb_image(self.rknn_infer.result_img)
         else:
             detect_hand_bool = False
+
         self.controller.update(detect_hand_bool)   # 更新目标检测结果状态
         self.send_hand_detcet_event_info()        # 发送目标检测结果状态信息
 
@@ -133,10 +140,24 @@ class HandDetect:
 
         current_time = time.time()
         delta_t = current_time - self.last_send_topic_time
-
+        # print('the delta_t is :%f' % delta_t)
         if delta_t > self.send_topic_time_thread:
-            # 如果检测到手,则发布
-            self.detect_pub.publish(Bool(self.controller.event_state))
+            # self.logger.save_detect_object_log("detect hand object number : "+str(self.rknn_infer.detections.shape[0])+"\n")
+            # self.logger.save_frame_rgb_image(self.rknn_infer.result_img)
+
+            if self.controller.event_state:
+                # 如果检测到手,则发布
+                self.detect_pub.publish(Bool(self.controller.event_state))
+                self.last_hand_detect_state = self.controller.event_state
+                self.logger.save_detect_object_log(
+                    "detect hand object number : " + str(self.rknn_infer.detections.shape[0]) + "\n")
+            else:
+                if self.last_hand_detect_state:
+                    self.detect_pub.publish(Bool(self.controller.event_state))
+                    self.last_hand_detect_state = self.controller.event_state
+                    self.logger.save_detect_object_log(
+                        "detect hand object number : " + str(self.rknn_infer.detections.shape[0]) + "\n")
+
             # # 发布处理后图像
             # processed_img = self.bridge.cv2_to_imgmsg(self.rknn_infer.result_img, encoding="rgb8")
             # self.img_pub.publish(processed_img)
