@@ -46,6 +46,7 @@ class HandDetect:
         self.controller = but.HandStateController(threshold=5)
         self.rknn_infer = RKNNInference.RKNNInference(self.BlazePalmModelInfo)
         self.bgr_origin_image_crop_config = {
+                                        "is_crop": False,
                                         "center_x": 130,
                                         "center_y": 117,
                                         "axes_w": 92,
@@ -58,7 +59,7 @@ class HandDetect:
         self.subscriber = None
         self.create_rospy_topics()
 
-        self.send_topic_time_thread = 1.0
+        self.send_topic_time_thread = 0.02
         self.last_send_topic_time = time.time()
         self.last_hand_detect_state = False
 
@@ -68,6 +69,7 @@ class HandDetect:
             config = configparser.ConfigParser()
             config.read(self.config_path, encoding='utf-8')
             self.bgr_origin_image_crop_config = {
+                "is_crop": config.getboolean("ImageCropConfig", "is_crop", fallback=False),
                 "center_x": config.getint("ImageCropConfig", "center_x"),
                 "center_y": config.getint("ImageCropConfig", "center_y"),
                 "axes_w": config.getint("ImageCropConfig", "axes_w"),
@@ -95,8 +97,12 @@ class HandDetect:
                     data_bytes = bytes(latest["data_ptr"])
                     # 获取到rgb_frame,用来AI处理
                     origin_bgr_image = but.yuv420_to_rgb(data_bytes, width, height)
-                    self.rknn_infer.infer_image_data = but.image_crop_ellipse(origin_bgr_image,
+                    # 是否进行图像裁剪
+                    if self.bgr_origin_image_crop_config["is_crop"]:
+                        self.rknn_infer.infer_image_data = but.image_crop_ellipse(origin_bgr_image,
                                                                               self.bgr_origin_image_crop_config)
+                    else:
+                        self.rknn_infer.infer_image_data = origin_bgr_image
 
                     self.rknn_infer.infer()
                     self.post_processing()
@@ -118,6 +124,7 @@ class HandDetect:
                                                 self.rknn_infer.image_resize_pad_info["scale"],
                                                 self.rknn_infer.image_resize_pad_info["pad"],
                                                 resolution=self.BlazePalmModelInfo["IMAGE_WIDTH"])
+
 
         self.rknn_infer.result_img = but.display_result(self.rknn_infer.infer_image_data,
                                                         self.rknn_infer.detections)  # 添加检测框，到图像数据中
@@ -151,6 +158,7 @@ class HandDetect:
                 self.last_hand_detect_state = self.controller.event_state
                 self.logger.save_detect_object_log(
                     "detect hand object number : " + str(self.rknn_infer.detections.shape[0]) + "\n")
+                self.logger.save_frame_rgb_image(self.rknn_infer.result_img)
             else:
                 if self.last_hand_detect_state:
                     self.detect_pub.publish(Bool(self.controller.event_state))

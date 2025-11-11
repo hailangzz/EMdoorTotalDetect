@@ -5,7 +5,7 @@ import os
 import time
 
 num_coords = 18
-min_score_thresh = 0.68
+min_score_thresh = 0.7
 min_suppression_threshold = 0.3
 num_keypoints = 7
 
@@ -360,9 +360,9 @@ def image_crop_ellipse(rgb_img, image_crop_config=None):
 
 class HandStateController:
 
-    def __init__(self, threshold=7,time_thresh=1):
+    def __init__(self, threshold=2,time_thresh=0.02):
         self.threshold = threshold  # 连续帧阈值
-        self.identification_number = 4
+        self.identification_number = 1
         self.counter = 0            # 当前累计帧数
         self.event_state = False          # 当前状态输出
 

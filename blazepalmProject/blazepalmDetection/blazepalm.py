@@ -35,6 +35,9 @@ MODEL_PATH = convert_tflite_to_onnx(tflite_file="models/palm_detection_full.tfli
 
 IMAGE_HEIGHT = 192
 IMAGE_WIDTH = 192
+# IMAGE_HEIGHT = 640
+# IMAGE_WIDTH = 640
+
 ANCHOR_PATH = 'config/anchors_192.npy'
 CHANNEL_FIRST = False
 
