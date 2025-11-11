@@ -357,12 +357,29 @@ def image_crop_ellipse(rgb_img, image_crop_config=None):
 
     return masked_img
 
+def filter_detections(detections,box_min_rate_thread=0.15,max_widths=120, max_heights=105):
+    # 过滤 bbox
+    if box_min_rate_thread is not None:
+        widths = detections[:, 2] - detections[:, 0]
+        heights = detections[:, 3] - detections[:, 1]
+
+        keep_mask = np.ones(len(detections), dtype=bool)
+        if box_min_rate_thread is not None:
+            widths_rate = widths/max_widths
+            heights_rate = heights/max_heights
+            keep_mask &= (widths_rate >= box_min_rate_thread) & (heights >= heights_rate)
+        # if max_size is not None:
+        #     keep_mask &= (widths <= max_size) & (heights <= max_size)
+
+        detections = detections[keep_mask]
+    return detections
+
 
 class HandStateController:
 
-    def __init__(self, threshold=2,time_thresh=0.02):
+    def __init__(self, threshold=2,time_thresh=0.01):
         self.threshold = threshold  # 连续帧阈值
-        self.identification_number = 1
+        self.identification_number = 3
         self.counter = 0            # 当前累计帧数
         self.event_state = False          # 当前状态输出
 

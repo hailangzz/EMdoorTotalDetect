@@ -14,6 +14,7 @@ import debug
 import os
 import configparser
 import logging.config
+
 # 屏蔽 ROS 自动加载日志配置
 os.environ['ROSCONSOLE_CONFIG_FILE'] = '/dev/null'
 
@@ -33,24 +34,26 @@ logging._nameToLevel.update({'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40
 
 
 class HandDetect:
-    def __init__(self,):
+    def __init__(self, ):
         self.subscriber = None
         self.logger = debug.ProjectDebug()
         self.BlazePalmModelInfo = {"IMAGE_HEIGHT": 192,
-                          "IMAGE_WIDTH": 192,
-                          "CHANNEL_FIRST": False,
-                          "RKNN_MODEL": "palm_detection_full.rknn",
-                          "ANCHOR_PATH": "anchors_192.npy"
-                          }
+                                   "IMAGE_WIDTH": 192,
+                                   "CHANNEL_FIRST": False,
+                                   "RKNN_MODEL": "palm_detection_full.rknn",
+                                   "ANCHOR_PATH": "anchors_192.npy"
+                                   }
         self.config_path = r"./config.ini"
         self.controller = but.HandStateController(threshold=5)
         self.rknn_infer = RKNNInference.RKNNInference(self.BlazePalmModelInfo)
         self.bgr_origin_image_crop_config = {
-                                        "is_crop": False,
-                                        "center_x": 130,
-                                        "center_y": 117,
-                                        "axes_w": 92,
-                                        "axes_h": 95}
+            "is_crop": False,
+            "center_x": 130,
+            "center_y": 117,
+            "axes_w": 92,
+            "axes_h": 95}
+        self.detection_box_filter = {"box_min_rate_thread": 0.15}
+
         self.read_config_info()
 
         self.img_pub = None
@@ -59,7 +62,7 @@ class HandDetect:
         self.subscriber = None
         self.create_rospy_topics()
 
-        self.send_topic_time_thread = 0.02
+        self.send_topic_time_thread = 0.01
         self.last_send_topic_time = time.time()
         self.last_hand_detect_state = False
 
@@ -73,8 +76,11 @@ class HandDetect:
                 "center_x": config.getint("ImageCropConfig", "center_x"),
                 "center_y": config.getint("ImageCropConfig", "center_y"),
                 "axes_w": config.getint("ImageCropConfig", "axes_w"),
-                "axes_h": config.getint("ImageCropConfig", "axes_h")
+                "axes_h": config.getint("ImageCropConfig", "axes_h"),
             }
+
+            self.detection_box_filter = {"box_min_rate_thread": config.getfloat("FilterDetectionsBox",
+                                                                                "box_min_rate_thread")}
 
     def create_rospy_topics(self):
         rospy.init_node("shelf_rgb_ai", anonymous=True)
@@ -100,7 +106,7 @@ class HandDetect:
                     # 是否进行图像裁剪
                     if self.bgr_origin_image_crop_config["is_crop"]:
                         self.rknn_infer.infer_image_data = but.image_crop_ellipse(origin_bgr_image,
-                                                                              self.bgr_origin_image_crop_config)
+                                                                                  self.bgr_origin_image_crop_config)
                     else:
                         self.rknn_infer.infer_image_data = origin_bgr_image
 
@@ -121,10 +127,15 @@ class HandDetect:
                                                 anchor_path=self.BlazePalmModelInfo["ANCHOR_PATH"],
                                                 resolution=self.BlazePalmModelInfo["IMAGE_WIDTH"])[0]
         self.rknn_infer.detections = but.denormalize_detections(normalized_detections,
-                                                self.rknn_infer.image_resize_pad_info["scale"],
-                                                self.rknn_infer.image_resize_pad_info["pad"],
-                                                resolution=self.BlazePalmModelInfo["IMAGE_WIDTH"])
+                                                                self.rknn_infer.image_resize_pad_info["scale"],
+                                                                self.rknn_infer.image_resize_pad_info["pad"],
+                                                                resolution=self.BlazePalmModelInfo["IMAGE_WIDTH"])
 
+        # 过滤过小的检测框
+        self.rknn_infer.detections = but.filter_detections(self.rknn_infer.detections,
+                                                           self.detection_box_filter["box_min_rate_thread"],
+                                                           self.bgr_origin_image_crop_config["axes_w"],
+                                                           self.bgr_origin_image_crop_config["axes_h"])
 
         self.rknn_infer.result_img = but.display_result(self.rknn_infer.infer_image_data,
                                                         self.rknn_infer.detections)  # 添加检测框，到图像数据中
@@ -139,8 +150,8 @@ class HandDetect:
         else:
             detect_hand_bool = False
 
-        self.controller.update(detect_hand_bool)   # 更新目标检测结果状态
-        self.send_hand_detcet_event_info()        # 发送目标检测结果状态信息
+        self.controller.update(detect_hand_bool)  # 更新目标检测结果状态
+        self.send_hand_detcet_event_info()  # 发送目标检测结果状态信息
 
     def send_hand_detcet_event_info(self):
         # 作用：每间隔1秒钟，发送一次手部检测结果的状态值
@@ -211,8 +222,9 @@ def detect_program():
                 此处编写AI检测代码                
                 """
                 rknn_infer.infer()
-                normalized_detections = but.postprocess(rknn_infer.outputs, anchor_path=BlazePalmModelInfo["ANCHOR_PATH"],
-                                                        resolution=BlazePalmModelInfo["IMAGE_WIDTH"])[0]
+                normalized_detections = \
+                but.postprocess(rknn_infer.outputs, anchor_path=BlazePalmModelInfo["ANCHOR_PATH"],
+                                resolution=BlazePalmModelInfo["IMAGE_WIDTH"])[0]
                 detections = but.denormalize_detections(normalized_detections,
                                                         rknn_infer.image_resize_pad_info["scale"],
                                                         rknn_infer.image_resize_pad_info["pad"],
@@ -245,4 +257,3 @@ def detect_program():
 
 if __name__ == "__main__":
     detect_program()
-

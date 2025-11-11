@@ -3,7 +3,7 @@ import cv2
 import configparser
 import os
 
-rgb_img = cv2.imread('./297.png')
+rgb_img = cv2.imread('./1.png')
 
 def image_crop_ellipse(rgb_img, center=None, axes=None):
     """
@@ -58,7 +58,7 @@ else:
     }
 
     print(crop_config)
-cropped_img = image_crop_ellipse(rgb_img, center=(130, 116), axes=(120, 105))
+cropped_img = image_crop_ellipse(rgb_img, center=(252, 234), axes=(250, 210))
 
 # # 可视化
 cv2.imshow("Cropped Ellipse", cropped_img)
