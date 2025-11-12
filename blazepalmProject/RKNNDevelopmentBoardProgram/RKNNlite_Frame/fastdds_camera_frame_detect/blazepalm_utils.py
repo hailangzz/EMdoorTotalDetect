@@ -37,10 +37,10 @@ def resize_pad(img, resolution):
         padh = resolution - h1
         padw = 0
         scale = size0[0] / h1
-    padh1 = padh//2
-    padh2 = padh//2 + padh % 2
-    padw1 = padw//2
-    padw2 = padw//2 + padw % 2
+    padh1 = padh // 2
+    padh2 = padh // 2 + padh % 2
+    padw1 = padw // 2
+    padw2 = padw // 2 + padw % 2
     img1 = cv2.resize(img, (w1, h1))
     img1 = np.pad(img1, ((padh1, padh2), (padw1, padw2), (0, 0)), mode='constant')
     pad = (int(padh1 * scale), int(padw1 * scale))
@@ -71,10 +71,10 @@ def decode_boxes(raw_boxes, anchors, resolution):
     boxes[..., 3] = x_center + w / 2.  # xmax
 
     for k in range(num_keypoints):
-        offset = 4 + k*2
-        keypoint_x = raw_boxes[..., offset    ] / x_scale * anchors[:, 2] + anchors[:, 0]
+        offset = 4 + k * 2
+        keypoint_x = raw_boxes[..., offset] / x_scale * anchors[:, 2] + anchors[:, 0]
         keypoint_y = raw_boxes[..., offset + 1] / y_scale * anchors[:, 3] + anchors[:, 1]
-        boxes[..., offset    ] = keypoint_x
+        boxes[..., offset] = keypoint_x
         boxes[..., offset + 1] = keypoint_y
 
     return boxes
@@ -157,7 +157,7 @@ def jaccard(box_a, box_b):
     inter = intersect(box_a, box_b)
     area_a = np.repeat(
         np.expand_dims(
-            (box_a[:, 2]-box_a[:, 0]) * (box_a[:, 3]-box_a[:, 1]),
+            (box_a[:, 2] - box_a[:, 0]) * (box_a[:, 3] - box_a[:, 1]),
             axis=1
         ),
         inter.shape[1],
@@ -165,7 +165,7 @@ def jaccard(box_a, box_b):
     )  # [A,B]
     area_b = np.repeat(
         np.expand_dims(
-            (box_b[:, 2]-box_b[:, 0]) * (box_b[:, 3]-box_b[:, 1]),
+            (box_b[:, 2] - box_b[:, 0]) * (box_b[:, 3] - box_b[:, 1]),
             axis=0
         ),
         inter.shape[0],
@@ -229,7 +229,7 @@ def weighted_non_max_suppression(detections):
         weighted_detection = detection.copy()
         if len(overlapping) > 1:
             coordinates = detections[overlapping, :num_coords]
-            scores = detections[overlapping, num_coords:num_coords+1]
+            scores = detections[overlapping, num_coords:num_coords + 1]
             total_score = scores.sum()
             weighted = (coordinates * scores).sum(axis=0) / total_score
             weighted_detection[:num_coords] = weighted
@@ -285,10 +285,11 @@ def postprocess(preds_ailia, anchor_path='anchors.npy', resolution=256):
     filtered_detections = []
     for i in range(len(detections)):
         faces = weighted_non_max_suppression(detections[i])
-        faces = np.stack(faces) if len(faces) > 0 else np.zeros((0, num_coords+1))
+        faces = np.stack(faces) if len(faces) > 0 else np.zeros((0, num_coords + 1))
         filtered_detections.append(faces)
 
     return filtered_detections
+
 
 def get_savepath(arg_path, src_path, prefix='', post_fix='_res', ext=None):
     if '.' in arg_path:
@@ -304,6 +305,7 @@ def get_savepath(arg_path, src_path, prefix='', post_fix='_res', ext=None):
         os.makedirs(dirname, exist_ok=True)
     return new_path
 
+
 def display_result(img, detections, with_keypoints=True):
     if detections.ndim == 1:
         detections = np.expand_dims(detections, axis=0)
@@ -314,10 +316,11 @@ def display_result(img, detections, with_keypoints=True):
         img = cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 1)
         if with_keypoints:
             for k in range(n_keypoints):
-                kp_x = int(detections[i, 4 + k*2])
-                kp_y = int(detections[i, 4 + k*2 + 1])
+                kp_x = int(detections[i, 4 + k * 2])
+                kp_y = int(detections[i, 4 + k * 2 + 1])
                 cv2.circle(img, (kp_x, kp_y), 2, (0, 0, 255), thickness=2)
     return img
+
 
 def yuv420_to_rgb(data_bytes, width, height):
     """
@@ -333,13 +336,20 @@ def yuv420_to_rgb(data_bytes, width, height):
 
 def image_crop_ellipse(rgb_img, image_crop_config=None):
     """
-    在原始 RGB 图像上裁切椭圆区域，其他区域置为黑色
-    center: (x, y) 椭圆中心，默认图像中心
-    axes: (a, b) 椭圆半轴长度，默认覆盖整个图像
+    在原始 RGB 图像上裁切椭圆区域，并输出紧贴椭圆边缘的最小外接矩形区域。
+
+    参数：
+        rgb_img: 输入 RGB 图像
+        center: (x, y)，椭圆中心，默认图像中心
+        axes: (a, b)，椭圆半轴长度，默认覆盖整个图像
+
+    返回：
+        cropped_img: 紧贴椭圆外框的 RGB 图像
     """
     center = ()
     axes = ()
     height, width = rgb_img.shape[:2]
+
     if image_crop_config is None:
         # 默认中心为图像中心
         center = (width // 2, height // 2)
@@ -348,16 +358,27 @@ def image_crop_ellipse(rgb_img, image_crop_config=None):
     else:
         center = (image_crop_config["center_x"], image_crop_config["center_y"])
         axes = (image_crop_config["axes_w"], image_crop_config["axes_h"])
-    # 创建 mask
+
+    # 创建二值 mask（椭圆区域为255）
     mask = np.zeros((height, width), dtype=np.uint8)
-    # 画椭圆
     cv2.ellipse(mask, center, axes, 0, 0, 360, 255, -1)
-    # 应用 mask
+
+    # 椭圆外设为黑色
     masked_img = cv2.bitwise_and(rgb_img, rgb_img, mask=mask)
 
-    return masked_img
+    # 获取非零区域的最小外接矩形
+    coords = cv2.findNonZero(mask)
+    if coords is None:
+        return np.zeros((1, 1, 3), dtype=np.uint8)
+    x, y, w, h = cv2.boundingRect(coords)
 
-def filter_detections(detections,box_min_rate_thread=0.15,max_widths=120, max_heights=105):
+    # 裁剪出紧贴椭圆边缘的图像区域
+    cropped_img = masked_img[y:y + h, x:x + w]
+
+    return cropped_img
+
+
+def filter_detections(detections, box_min_rate_thread=0.15, max_widths=120, max_heights=105):
     # 过滤 bbox
     if box_min_rate_thread is not None:
         widths = detections[:, 2] - detections[:, 0]
@@ -365,8 +386,8 @@ def filter_detections(detections,box_min_rate_thread=0.15,max_widths=120, max_he
 
         keep_mask = np.ones(len(detections), dtype=bool)
         if box_min_rate_thread is not None:
-            widths_rate = widths/max_widths
-            heights_rate = heights/max_heights
+            widths_rate = widths / max_widths
+            heights_rate = heights / max_heights
             keep_mask &= (widths_rate >= box_min_rate_thread) & (heights >= heights_rate)
         # if max_size is not None:
         #     keep_mask &= (widths <= max_size) & (heights <= max_size)
@@ -377,14 +398,14 @@ def filter_detections(detections,box_min_rate_thread=0.15,max_widths=120, max_he
 
 class HandStateController:
 
-    def __init__(self, threshold=2,time_thresh=0.01):
+    def __init__(self, threshold=2, time_thresh=0.01):
         self.threshold = threshold  # 连续帧阈值
         self.identification_number = 3
-        self.counter = 0            # 当前累计帧数
-        self.event_state = False          # 当前状态输出
+        self.counter = 0  # 当前累计帧数
+        self.event_state = False  # 当前状态输出
 
-        self.event_time_limit = time_thresh #检测到手部的时间间隔
-        self.event_infer_send_time = time.time() #上次发送检测到手部的
+        self.event_time_limit = time_thresh  #检测到手部的时间间隔
+        self.event_infer_send_time = time.time()  #上次发送检测到手部的
         self.event_info_send_trigger = False  # 发送手部检测时间状态标志
 
     def update(self, detected: bool):
@@ -405,7 +426,7 @@ class HandStateController:
 
         if self.event_state:
             current_time = time.time()
-            delta_t = current_time-self.event_infer_send_time
+            delta_t = current_time - self.event_infer_send_time
             # print(delta_t)
             if delta_t > self.event_time_limit:
 

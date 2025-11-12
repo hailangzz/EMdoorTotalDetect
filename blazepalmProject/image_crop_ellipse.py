@@ -5,27 +5,45 @@ import os
 
 rgb_img = cv2.imread('./1.png')
 
+
 def image_crop_ellipse(rgb_img, center=None, axes=None):
     """
-    在原始 RGB 图像上裁切椭圆区域，其他区域置为黑色
-    center: (x, y) 椭圆中心，默认图像中心
-    axes: (a, b) 椭圆半轴长度，默认覆盖整个图像
+    在原始 RGB 图像上裁切椭圆区域，并输出紧贴椭圆边缘的最小外接矩形区域。
+
+    参数：
+        rgb_img: 输入 RGB 图像
+        center: (x, y)，椭圆中心，默认图像中心
+        axes: (a, b)，椭圆半轴长度，默认覆盖整个图像
+
+    返回：
+        cropped_img: 紧贴椭圆外框的 RGB 图像
     """
     height, width = rgb_img.shape[:2]
+
     # 默认中心为图像中心
     if center is None:
         center = (width // 2, height // 2)
-    # 默认椭圆半轴覆盖整个图像
+    # 默认半轴覆盖整张图
     if axes is None:
         axes = (width // 2, height // 2)
-    # 创建 mask
+
+    # 创建二值 mask（椭圆区域为255）
     mask = np.zeros((height, width), dtype=np.uint8)
-    # 画椭圆
     cv2.ellipse(mask, center, axes, 0, 0, 360, 255, -1)
-    # 应用 mask
+
+    # 椭圆外设为黑色
     masked_img = cv2.bitwise_and(rgb_img, rgb_img, mask=mask)
 
-    return masked_img
+    # 获取非零区域的最小外接矩形
+    coords = cv2.findNonZero(mask)
+    if coords is None:
+        return np.zeros((1, 1, 3), dtype=np.uint8)
+    x, y, w, h = cv2.boundingRect(coords)
+
+    # 裁剪出紧贴椭圆边缘的图像区域
+    cropped_img = masked_img[y:y + h, x:x + w]
+
+    return cropped_img
 
 # ==========================
 # 示例用法
