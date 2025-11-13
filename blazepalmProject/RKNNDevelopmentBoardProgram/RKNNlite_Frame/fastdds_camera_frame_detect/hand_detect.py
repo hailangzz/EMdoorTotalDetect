@@ -43,17 +43,20 @@ class HandDetect:
                                    "RKNN_MODEL": "palm_detection_full.rknn",
                                    "ANCHOR_PATH": "anchors_192.npy"
                                    }
-        self.config_path = r"./config.ini"
-        self.controller = but.HandStateController(threshold=5)
-        self.rknn_infer = RKNNInference.RKNNInference(self.BlazePalmModelInfo)
         self.bgr_origin_image_crop_config = {
             "is_crop": False,
             "center_x": 130,
             "center_y": 117,
             "axes_w": 92,
             "axes_h": 95}
+        self.detect_result_event_smooth = {"detect_time_thread": 1}
         self.detection_box_filter = {"box_min_rate_thread": 0.15}
 
+        self.send_topic_time_thread = {"send_topic_time_thread": 0.005}
+        self.last_send_topic_time = time.time()
+        self.last_hand_detect_state = False
+
+        self.config_path = r"./config.ini"
         self.read_config_info()
 
         self.img_pub = None
@@ -62,9 +65,8 @@ class HandDetect:
         self.subscriber = None
         self.create_rospy_topics()
 
-        self.send_topic_time_thread = 0.01
-        self.last_send_topic_time = time.time()
-        self.last_hand_detect_state = False
+        self.controller = but.HandStateController(threshold=self.detect_result_event_smooth["detect_time_thread"])
+        self.rknn_infer = RKNNInference.RKNNInference(self.BlazePalmModelInfo)
 
     def read_config_info(self):
 
@@ -78,9 +80,12 @@ class HandDetect:
                 "axes_w": config.getint("ImageCropConfig", "axes_w"),
                 "axes_h": config.getint("ImageCropConfig", "axes_h"),
             }
-
             self.detection_box_filter = {"box_min_rate_thread": config.getfloat("FilterDetectionsBox",
                                                                                 "box_min_rate_thread")}
+            self.detect_result_event_smooth = {"detect_time_thread": config.getint("DetectResultEventSmooth",
+                                                                                   "detect_time_thread")}
+            self.send_topic_time_thread = {"send_topic_time_thread": config.getfloat("SendEventTopics",
+                                                                                     "send_topic_time_thread")}
 
     def create_rospy_topics(self):
         rospy.init_node("shelf_rgb_ai", anonymous=True)
@@ -159,7 +164,7 @@ class HandDetect:
         current_time = time.time()
         delta_t = current_time - self.last_send_topic_time
         # print('the delta_t is :%f' % delta_t)
-        if delta_t > self.send_topic_time_thread:
+        if delta_t > self.send_topic_time_thread["send_topic_time_thread"]:
             # self.logger.save_detect_object_log("detect hand object number : "+str(self.rknn_infer.detections.shape[0])+"\n")
             # self.logger.save_frame_rgb_image(self.rknn_infer.result_img)
 
@@ -170,6 +175,8 @@ class HandDetect:
                 self.logger.save_detect_object_log(
                     "detect hand object number : " + str(self.rknn_infer.detections.shape[0]) + "\n")
                 self.logger.save_frame_rgb_image(self.rknn_infer.result_img)
+                # processed_img = self.bridge.cv2_to_imgmsg(self.rknn_infer.result_img, encoding="rgb8")
+                # self.img_pub.publish(processed_img)
             else:
                 if self.last_hand_detect_state:
                     self.detect_pub.publish(Bool(self.controller.event_state))
@@ -179,7 +186,8 @@ class HandDetect:
 
             # # 发布处理后图像
             # processed_img = self.bridge.cv2_to_imgmsg(self.rknn_infer.result_img, encoding="rgb8")
-            # self.img_pub.publish(processed_img)
+            processed_img = self.bridge.cv2_to_imgmsg(self.rknn_infer.result_img, encoding="bgr8")
+            self.img_pub.publish(processed_img)
             self.last_send_topic_time = current_time
 
     def __del__(self):
@@ -223,8 +231,8 @@ def detect_program():
                 """
                 rknn_infer.infer()
                 normalized_detections = \
-                but.postprocess(rknn_infer.outputs, anchor_path=BlazePalmModelInfo["ANCHOR_PATH"],
-                                resolution=BlazePalmModelInfo["IMAGE_WIDTH"])[0]
+                    but.postprocess(rknn_infer.outputs, anchor_path=BlazePalmModelInfo["ANCHOR_PATH"],
+                                    resolution=BlazePalmModelInfo["IMAGE_WIDTH"])[0]
                 detections = but.denormalize_detections(normalized_detections,
                                                         rknn_infer.image_resize_pad_info["scale"],
                                                         rknn_infer.image_resize_pad_info["pad"],
@@ -238,7 +246,7 @@ def detect_program():
                     detect_hand = False
 
                 controller.update(detect_hand)
-                if controller.state:
+                if controller.event_state:
                     # 如果检测到手,则发布
                     detect_pub.publish(Empty())
                     # 发布处理后图像

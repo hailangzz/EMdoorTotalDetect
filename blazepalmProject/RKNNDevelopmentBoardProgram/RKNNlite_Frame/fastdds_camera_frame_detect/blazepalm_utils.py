@@ -3,9 +3,10 @@ import numpy as np
 from scipy.special import expit
 import os
 import time
+import math
 
 num_coords = 18
-min_score_thresh = 0.7
+min_score_thresh = 0.75
 min_suppression_threshold = 0.3
 num_keypoints = 7
 
@@ -400,13 +401,13 @@ class HandStateController:
 
     def __init__(self, threshold=2, time_thresh=0.01):
         self.threshold = threshold  # 连续帧阈值
-        self.identification_number = 3
+        self.identification_number = math.ceil(threshold/2)
         self.counter = 0  # 当前累计帧数
         self.event_state = False  # 当前状态输出
 
-        self.event_time_limit = time_thresh  #检测到手部的时间间隔
-        self.event_infer_send_time = time.time()  #上次发送检测到手部的
-        self.event_info_send_trigger = False  # 发送手部检测时间状态标志
+        # self.event_time_limit = time_thresh  #检测到手部的时间间隔
+        # self.event_infer_send_time = time.time()  #上次发送检测到手部的
+        # self.event_info_send_trigger = False  # 发送手部检测时间状态标志
 
     def update(self, detected: bool):
         """
@@ -424,15 +425,15 @@ class HandStateController:
         else:
             self.event_state = False
 
-        if self.event_state:
-            current_time = time.time()
-            delta_t = current_time - self.event_infer_send_time
-            # print(delta_t)
-            if delta_t > self.event_time_limit:
-
-                self.event_info_send_trigger = True
-                self.event_infer_send_time = current_time
-            else:
-                self.event_info_send_trigger = False
-        else:
-            self.event_info_send_trigger = False
+        # if self.event_state:
+        #     current_time = time.time()
+        #     delta_t = current_time - self.event_infer_send_time
+        #     # print(delta_t)
+        #     if delta_t > self.event_time_limit:
+        #
+        #         self.event_info_send_trigger = True
+        #         self.event_infer_send_time = current_time
+        #     else:
+        #         self.event_info_send_trigger = False
+        # else:
+        #     self.event_info_send_trigger = False
