@@ -6,7 +6,7 @@ import time
 import math
 
 num_coords = 18
-min_score_thresh = 0.75
+min_score_thresh = 0.7
 min_suppression_threshold = 0.3
 num_keypoints = 7
 

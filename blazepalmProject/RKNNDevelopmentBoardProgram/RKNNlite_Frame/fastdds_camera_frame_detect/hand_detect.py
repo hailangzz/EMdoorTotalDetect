@@ -174,9 +174,10 @@ class HandDetect:
                 self.last_hand_detect_state = self.controller.event_state
                 self.logger.save_detect_object_log(
                     "detect hand object number : " + str(self.rknn_infer.detections.shape[0]) + "\n")
-                self.logger.save_frame_rgb_image(self.rknn_infer.result_img)
+                # self.logger.save_frame_rgb_image(self.rknn_infer.result_img)
                 # processed_img = self.bridge.cv2_to_imgmsg(self.rknn_infer.result_img, encoding="rgb8")
                 # self.img_pub.publish(processed_img)
+                print("detect hand object!!!")
             else:
                 if self.last_hand_detect_state:
                     self.detect_pub.publish(Bool(self.controller.event_state))

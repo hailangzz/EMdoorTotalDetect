@@ -53,3 +53,6 @@ for i, detected in enumerate(frames):
     state, trigger = controller.update(detected)
     print(f"Frame {i+1:02d}: detected={detected}, state={state}, trigger={trigger}")
     time.sleep(0.2)
+
+
+
