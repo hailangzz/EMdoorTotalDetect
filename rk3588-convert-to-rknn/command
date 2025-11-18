@@ -1,0 +1,2 @@
+# 导出onnx模型文件，命令
+python export_det.py -w /home/chenkejing/PycharmProjects/ultralytics/runs/detect/train3/weights/best.pt --sim
