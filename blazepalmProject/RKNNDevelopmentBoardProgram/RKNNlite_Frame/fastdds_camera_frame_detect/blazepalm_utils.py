@@ -315,11 +315,19 @@ def display_result(img, detections, with_keypoints=True):
     for i in range(detections.shape[0]):
         ymin, xmin, ymax, xmax = detections[i, :4].astype(int)
         img = cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (255, 0, 0), 1)
+
         if with_keypoints:
             for k in range(n_keypoints):
                 kp_x = int(detections[i, 4 + k * 2])
                 kp_y = int(detections[i, 4 + k * 2 + 1])
                 cv2.circle(img, (kp_x, kp_y), 2, (0, 0, 255), thickness=2)
+
+        # 读取 score
+        score = detections[i, -1]
+        # 写 score 到图上（可选）
+        cv2.putText(img, f"{score:.2f}", (xmin, ymin - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
     return img
 
 
