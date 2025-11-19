@@ -387,6 +387,37 @@ def image_crop_ellipse(rgb_img, image_crop_config=None):
     return cropped_img
 
 
+def get_remove_distortion_mapping_matrix(camera_distortion_removal_parameter):
+    w = camera_distortion_removal_parameter["image_axes_w"]
+    h = camera_distortion_removal_parameter["image_axes_h"]
+    fx = camera_distortion_removal_parameter["fx"]
+    fy = camera_distortion_removal_parameter["fy"]
+    cx = camera_distortion_removal_parameter["cx"]
+    cy = camera_distortion_removal_parameter["cy"]
+
+    k1 = camera_distortion_removal_parameter["k1"]
+    k2 = camera_distortion_removal_parameter["k2"]
+    p1 = camera_distortion_removal_parameter["p1"]
+    p2 = camera_distortion_removal_parameter["p2"]
+    k3 = camera_distortion_removal_parameter["k3"]
+    k4 = camera_distortion_removal_parameter["k4"]
+    k5 = camera_distortion_removal_parameter["k5"]
+    k6 = camera_distortion_removal_parameter["k6"]
+
+    K = np.array([[fx, 0, cx],
+                  [0, fy, cy],
+                  [0, 0, 1]], dtype=np.float64)  # 内参矩阵
+    D = np.array([k1, k2, p1, p2, k3, k4, k5, k6], dtype=np.float64)  # 畸变系数
+    map1, map2 = cv2.initUndistortRectifyMap(K, D, None, K, (w, h), cv2.CV_16SC2)
+
+    return map1, map2
+
+
+def execute_camera_distortion_remove(frame, map1, map2):
+    undistorted_img = cv2.remap(frame, map1, map2, cv2.INTER_CUBIC)
+    return undistorted_img
+
+
 def filter_detections(detections, box_min_rate_thread=0.15, max_widths=120, max_heights=105):
     # 过滤 bbox
     if box_min_rate_thread is not None:
@@ -409,7 +440,7 @@ class HandStateController:
 
     def __init__(self, threshold=2, time_thresh=0.01):
         self.threshold = threshold  # 连续帧阈值
-        self.identification_number = math.ceil(threshold/2)
+        self.identification_number = math.ceil(threshold / 2)
         self.counter = 0  # 当前累计帧数
         self.event_state = False  # 当前状态输出
 

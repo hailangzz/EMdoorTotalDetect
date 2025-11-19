@@ -53,11 +53,20 @@ class HandDetect:
         self.detection_box_filter = {"box_min_rate_thread": 0.15}
 
         self.send_topic_time_thread = {"send_topic_time_thread": 0.005}
+
+        self.camera_distortion_removal_parameter = {"is_remove_distortion": True,
+                                                    "image_axes_w": 0, "image_axes_h": 0,
+                                                    "fx": 0, "fy": 0, "cx": 0, "cy": 0,
+                                                    "k1": 0, "k2": 0, "p1": 0, "p2": 0, "k3": 0, "k4": 0, "k5": 0,
+                                                    "k6": 0
+                                                    }
+        self.distortion_mapping_matrix = {"mapping_1": None, "mapping_2": None}
         self.last_send_topic_time = time.time()
         self.last_hand_detect_state = False
 
         self.config_path = r"./config.ini"
         self.read_config_info()
+        self.calculate_distortion_mapping_matrix()
 
         self.img_pub = None
         self.detect_pub = None
@@ -87,6 +96,29 @@ class HandDetect:
             self.send_topic_time_thread = {"send_topic_time_thread": config.getfloat("SendEventTopics",
                                                                                      "send_topic_time_thread")}
 
+            self.camera_distortion_removal_parameter = {
+                "is_remove_distortion": config.getboolean("RemoveDistortion", "is_remove_distortion", fallback=True),
+                "image_axes_w": config.getint("RemoveDistortion", "image_axes_w"),
+                "image_axes_h": config.getint("RemoveDistortion", "image_axes_h"),
+                "fx": config.getfloat("RemoveDistortion", "fx"),
+                "fy": config.getfloat("RemoveDistortion", "fy"),
+                "cx": config.getfloat("RemoveDistortion", "cx"),
+                "cy": config.getfloat("RemoveDistortion", "cy"),
+
+                "k1": config.getfloat("RemoveDistortion", "k1"),
+                "k2": config.getfloat("RemoveDistortion", "k2"),
+                "p1": config.getfloat("RemoveDistortion", "p1"),
+                "p2": config.getfloat("RemoveDistortion", "p2"),
+                "k3": config.getfloat("RemoveDistortion", "k3"),
+                "k4": config.getfloat("RemoveDistortion", "k4"),
+                "k5": config.getfloat("RemoveDistortion", "k5"),
+                "k6": config.getfloat("RemoveDistortion", "k6"),
+            }
+
+    def calculate_distortion_mapping_matrix(self):
+        self.distortion_mapping_matrix["mapping_1"], self.distortion_mapping_matrix[
+            "mapping_2"] = but.get_remove_distortion_mapping_matrix(self.camera_distortion_removal_parameter)
+
     def create_rospy_topics(self):
         rospy.init_node("shelf_rgb_ai", anonymous=True)
         self.img_pub = rospy.Publisher("/shelf_processed_img", Image, queue_size=1)
@@ -108,6 +140,11 @@ class HandDetect:
                     data_bytes = bytes(latest["data_ptr"])
                     # 获取到rgb_frame,用来AI处理
                     origin_bgr_image = but.yuv420_to_rgb(data_bytes, width, height)
+                    # 是否去畸变
+                    if self.camera_distortion_removal_parameter["is_remove_distortion"]:
+                        origin_bgr_image = but.execute_camera_distortion_remove(origin_bgr_image,
+                                                                                self.distortion_mapping_matrix["mapping_1"],
+                                                                                self.distortion_mapping_matrix["mapping_2"])
                     # 是否进行图像裁剪
                     if self.bgr_origin_image_crop_config["is_crop"]:
                         self.rknn_infer.infer_image_data = but.image_crop_ellipse(origin_bgr_image,
