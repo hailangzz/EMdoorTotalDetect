@@ -323,7 +323,8 @@ def display_result(img, detections, with_keypoints=True):
                 cv2.circle(img, (kp_x, kp_y), 2, (0, 0, 255), thickness=2)
 
         # 读取 score
-        score = detections[i, -1]
+        # score = detections[i, -1]
+        score = expit(detections[i, -1])
         # 写 score 到图上（可选）
         cv2.putText(img, f"{score:.2f}", (xmin, ymin - 5),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)

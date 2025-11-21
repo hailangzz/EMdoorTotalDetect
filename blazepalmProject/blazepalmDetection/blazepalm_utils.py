@@ -279,6 +279,7 @@ def postprocess(preds_ailia, anchor_path='anchors.npy', resolution=256):
     # Postprocess the raw predictions:
     detections = raw_output_to_detections(raw_box, raw_score, anchors, resolution)
 
+
     # Non-maximum suppression to remove overlapping detections:
     filtered_detections = []
     for i in range(len(detections)):

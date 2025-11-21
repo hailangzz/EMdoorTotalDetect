@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

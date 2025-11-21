@@ -16,3 +16,6 @@ source /home/robot/zhangzhuo/fastdds_env/setup.bash
 
 # 启动python脚本，并将日志写入文件
 python3 main_hand_detect.py >> ./run.log 2>&1
+
+
+

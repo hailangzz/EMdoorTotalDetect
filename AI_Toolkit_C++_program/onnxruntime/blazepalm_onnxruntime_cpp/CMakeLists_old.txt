@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.10)
+project(blazepalm_onnxruntime_cpp)
+set(CMAKE_CXX_STANDARD 17)
+
+
+find_package(OpenCV REQUIRED)
+
+
+# ONNXRUNTIME_HOME 环境变量（如果你用预编译包，指向解压路径）
+if(DEFINED ENV{ONNXRUNTIME_HOME})
+set(ONNXRUNTIME_ROOT $ENV{ONNXRUNTIME_HOME})
+else()
+message(FATAL_ERROR "Please set ONNXRUNTIME_HOME to the ONNXRuntime prebuilt folder")
+endif()
+
+
+include_directories(${ONNXRUNTIME_ROOT}/include include)
+link_directories(${ONNXRUNTIME_ROOT}/lib)
+
+
+add_executable(blazepalm
+src/main.cpp
+src/BlaceHandDetect.cpp
+src/utils.cpp
+)
+
+
+target_include_directories(blazepalm PRIVATE ${OpenCV_INCLUDE_DIRS} ${ONNXRUNTIME_ROOT}/include include)
+
+
+target_link_libraries(blazepalm PRIVATE ${OpenCV_LIBS} onnxruntime)
+
+
+# Install target (optional)
+install(TARGETS blazepalm DESTINATION bin)

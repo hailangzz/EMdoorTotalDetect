@@ -1,0 +1,8 @@
+blazepalm_onnxruntime_cpp：项目
+
+此项目，是基于onnxruntime框架下的c++版，blazepalm模型推理。在此基础上，对模型进行数据预处理、后处理等C++功能的调试，以备模型在开发版rknn环境下的正常执行。
+
+（rknn版本，将基于lubancat_ai_manual_code开源项目来实现
+    https://doc.embedfire.com/linux/rk356x/Ai/zh/latest/index.html
+    https://github.com/LubanCat/lubancat_ai_manual_code?tab=readme-ov-file
+    ）

@@ -1,0 +1,26 @@
+[
+{
+  "directory": "/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/build",
+  "command": "/usr/bin/c++  -I/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/include -I/usr/local/onnxruntime/include -isystem /usr/include/opencv4 -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles/video_reader.dir/src/blaze_hand_detect.cpp.o -c /home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/src/blaze_hand_detect.cpp",
+  "file": "/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/src/blaze_hand_detect.cpp",
+  "output": "CMakeFiles/video_reader.dir/src/blaze_hand_detect.cpp.o"
+},
+{
+  "directory": "/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/build",
+  "command": "/usr/bin/c++  -I/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/include -I/usr/local/onnxruntime/include -isystem /usr/include/opencv4 -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles/video_reader.dir/src/main.cpp.o -c /home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/src/main.cpp",
+  "file": "/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/src/main.cpp",
+  "output": "CMakeFiles/video_reader.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/build",
+  "command": "/usr/bin/c++  -I/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/include -I/usr/local/onnxruntime/include -isystem /usr/include/opencv4 -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles/video_reader.dir/src/utils.cpp.o -c /home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/src/utils.cpp",
+  "file": "/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/src/utils.cpp",
+  "output": "CMakeFiles/video_reader.dir/src/utils.cpp.o"
+},
+{
+  "directory": "/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/build",
+  "command": "/usr/bin/c++  -I/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/include -I/usr/local/onnxruntime/include -isystem /usr/include/opencv4 -O3 -DNDEBUG -std=gnu++17 -o CMakeFiles/video_reader.dir/src/video_reader.cpp.o -c /home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/src/video_reader.cpp",
+  "file": "/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/src/video_reader.cpp",
+  "output": "CMakeFiles/video_reader.dir/src/video_reader.cpp.o"
+}
+]
