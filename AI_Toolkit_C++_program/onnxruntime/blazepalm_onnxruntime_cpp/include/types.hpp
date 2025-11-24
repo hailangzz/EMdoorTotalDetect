@@ -15,4 +15,13 @@ struct PalmBox {
     std::vector<float> keypoints; // 14 float, x1,y1,...,x7,y7
 };
 
+struct ConfigInfo {
+    const char* model_path;
+    std::string anchors_path;
+    int num_boxes;
+    int num_keypoints; 
+    float resolution;
+    float score_threshold;
+
+};
 

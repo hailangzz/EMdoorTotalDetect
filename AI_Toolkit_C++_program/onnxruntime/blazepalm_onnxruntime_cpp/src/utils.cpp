@@ -141,6 +141,8 @@ std::vector<float> loadAnchorsBin(const std::string& filename) {
 // 绘制检测结果
 // 绘制检测结果，box 坐标归一化到 [0,1]
 void drawPalmBoxes(cv::Mat& image, const std::vector<PalmBox>& boxes) {
+
+    
     int img_w = image.cols;
     int img_h = image.rows;
 
@@ -168,10 +170,86 @@ void drawPalmBoxes(cv::Mat& image, const std::vector<PalmBox>& boxes) {
     }
 }
 
+void plotDetectBoxs(const std::string & image_path,const std::vector<PalmBox>& boxes){
+
+    cv::Mat image = cv::imread(image_path);
+    
+    // 5. 打印结果
+    for (size_t i = 0; i < boxes.size(); i++) {
+        const PalmBox& box = boxes[i];
+        std::cout << "Box " << i 
+                  << ": score=" << box.score 
+                  << " x=" << box.x 
+                  << " y=" << box.y 
+                  << " w=" << box.w 
+                  << " h=" << box.h 
+                  << std::endl;
+        std::cout << "  keypoints: ";
+        for (float kp : box.keypoints) std::cout << kp << " ";
+        std::cout << std::endl;
+    }
+
+    // 绘制检测结果
+    drawPalmBoxes(image, boxes);
+    // 显示图像
+    cv::imshow("Palm Detection", image);
+    cv::waitKey(0);
+
+    // 可选：保存到文件
+    cv::imwrite("palm_detect_result.jpg", image);
+
+}
+
+// 读取配置文件信息函数
+std::unordered_map<std::string, std::string> readConfig(const std::string& filename,ConfigInfo &cfg_values) {
+    std::unordered_map<std::string, std::string> config;
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open config file: " << filename << std::endl;
+        return config;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue; // 跳过空行和注释
+
+        std::istringstream iss(line);
+        std::string key, value;
+        if (std::getline(iss, key, '=') && std::getline(iss, value)) {
+            config[key] = value;
+        }
+    }
+
+    cfg_values.model_path  = config["model_path"].c_str(); 
+    cfg_values.anchors_path  = config["anchors"];                // 模型anchors路径
+    cfg_values.num_boxes = std::stoi(config["num_boxes"]);               // 你的模型输出框数量
+    cfg_values.num_keypoints = std::stoi(config["num_keypoints"]);       // BlazePalm 每个手 7 个关键点
+    cfg_values.resolution = std::stof(config["resolution"]);
+    cfg_values.score_threshold = std::stof(config["score_threshold"]); // 输入图片尺寸
+
+    return config;
+}
 
 
 
+// 读取视频信息函数
+void use_utils_read_videos_info(VideoInfo& videos_infos)
+{
+    if (!GetVideoInfo(videos_infos.video_path,
+                      videos_infos.width,
+                      videos_infos.height,
+                      videos_infos.fps,
+                      videos_infos.frame_count)) {
 
+        std::cerr << "Failed to read video info." << std::endl;
+        return;
+    }
 
-
-
+    std::cout << "VideoInfo:" << std::endl;
+    std::cout << "  video_path:  " << videos_infos.video_path << std::endl;
+    std::cout << "  width:       " << videos_infos.width << std::endl;
+    std::cout << "  height:      " << videos_infos.height << std::endl;
+    std::cout << "  fps:         " << videos_infos.fps << std::endl;
+    std::cout << "  frame_count: " << videos_infos.frame_count << std::endl;
+}

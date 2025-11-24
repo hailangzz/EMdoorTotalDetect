@@ -152,8 +152,6 @@ std::vector<PalmBox> Detector::parseOutput(const std::vector<float>& output_data
   return final_boxes;
 }
 
-
-
 std::pair<std::vector<float>, std::vector<float>>Detector::infer_output2(const std::vector<float>& input_data,const std::vector<int64_t>& input_shape)
 {
     if (!session_) {
