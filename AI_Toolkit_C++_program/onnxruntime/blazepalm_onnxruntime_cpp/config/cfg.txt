@@ -1,0 +1,15 @@
+// 模型路径
+// anchors文件路径
+// 预测框个数
+// 手部关键点数量
+// 模型输入图像尺寸
+// 预测框置信度
+
+model_path=/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/models/palm_detection_full.onnx
+anchors=/home/chenkejing/git_director/lubancat_ai_manual_code/dev_env/onnx_runtime/blazepalm_onnxruntime_cpp/models/anchors_192.bin
+num_boxes=2016
+num_keypoints=7
+resolution=192.f
+score_threshold=0.7f
+
+

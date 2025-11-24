@@ -11,7 +11,6 @@ namespace HandDetect{
       Detector() = default;
       ~Detector();
 
-
     bool loadModel(const char* model_path);
     void printModelInfo() const;
     bool preprocess(const cv::Mat& img, std::vector<float>& input_data, std::vector<int64_t>& input_shape);
@@ -40,6 +39,8 @@ namespace HandDetect{
                                            int num_keypoints = 7,
                                            float resolution = 192,
                                            float score_threshold = 0.7f);
+
+    std::vector<float> test_matrix_info(Detector & hand_detect);
 
     private:
       Ort::AllocatorWithDefaultOptions allocator_; // 放成员里，确保生命周期

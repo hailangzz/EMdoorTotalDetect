@@ -6,21 +6,8 @@
 #include "types.hpp"
 #include "utils.hpp"
 
-
 using namespace HandDetect;
 
-
-
-std::vector<float> test_matrix_info(Detector & hand_detect){
-    // 假设输入张量为 [1,3,224,224]
-    std::vector<float> input_data(1*192*192*3, 0.5f); // 示例数据
-    std::vector<int64_t> input_shape = {1, 192, 192, 3};  
-    std::vector<float> output = hand_detect.infer(input_data, input_shape);
-
-    return output;
-
-    
-}
 
 int main(int argc, char** argv)
 {
@@ -41,8 +28,8 @@ int main(int argc, char** argv)
     hand_detect.printModelInfo();
 
     std::vector<float> output;    
-    output = test_matrix_info(hand_detect);
-
+    output = hand_detect.test_matrix_info(hand_detect);
+    
     std::cout << "Output size: " << output.size() << std::endl;
     std::cout << "First 10 outputs: ";
     for (size_t i = 0; i < 10 && i < output.size(); i++) std::cout << output[i] << " ";

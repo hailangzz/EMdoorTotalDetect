@@ -9,6 +9,7 @@
 
 namespace HandDetect{
 
+
 bool Detector::loadModel(const char* model_path){
   
   try {
@@ -303,6 +304,16 @@ std::vector<PalmBox> Detector::rawOutputToDetections(const std::vector<float>& r
 
     // 调用你的 NMS
     return nms(filtered_boxes, 0.3f);
+}
+
+
+std::vector<float> Detector::test_matrix_info(Detector & hand_detect){
+    // 假设输入张量为 [1,3,224,224]
+    std::vector<float> input_data(1*192*192*3, 0.5f); // 示例数据
+    std::vector<int64_t> input_shape = {1, 192, 192, 3};  
+    std::vector<float> output = hand_detect.infer(input_data, input_shape);
+
+    return output;
 }
 
 
