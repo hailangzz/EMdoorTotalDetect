@@ -13,10 +13,10 @@ namespace HandDetectRknn{
 
 class Detector {
     public:
-        Detector();
+        Detector(const ConfigInfo& config);
         ~Detector();
 
-        ConfigInfo getModelparameter();
+        void initModelparameter(ConfigInfo config_info);
 
         bool loadModel(const std::string& model_path);
 
@@ -54,7 +54,6 @@ class Detector {
                                            float resolution,
                                            float score_threshold);
 
-        std::unordered_map<std::string, std::string> readConfig(const std::string& filename,ConfigInfo &cfg_values);
         std::vector<float> loadAnchorsBin(const std::string& filename) ;
 
         rknn_context ctx_ = 0;

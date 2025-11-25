@@ -14,4 +14,5 @@ num_keypoints=7
 resolution=192.f
 score_threshold=0.7f
 
-
+//手部检测帧数阈值
+max_frame_threshold=3

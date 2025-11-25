@@ -25,11 +25,12 @@ struct ConfigInfo {
     int num_keypoints; 
     float resolution;
     float score_threshold;
+    int max_frame_threshold;
 
 };
 
-struct Detection {
-  float score;
-  float x, y, w, h;
-  std::vector<float> keypoints;
-};
+// struct Detection {
+//   float score;
+//   float x, y, w, h;
+//   std::vector<float> keypoints;
+// };

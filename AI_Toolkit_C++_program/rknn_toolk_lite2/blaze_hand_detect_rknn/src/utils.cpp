@@ -1,5 +1,40 @@
 #include "utils.hpp"
 
+
+ConfigInfo readConfig(const std::string& filename) {
+    ConfigInfo cfg_values;
+
+    std::unordered_map<std::string, std::string> config;
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open config file: " << filename << std::endl;
+        return cfg_values;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue; // 跳过空行和注释
+
+        std::istringstream iss(line);
+        std::string key, value;
+        if (std::getline(iss, key, '=') && std::getline(iss, value)) {
+            config[key] = value;
+        }
+    }
+
+    cfg_values.model_path  = config["model_path"].c_str(); 
+    cfg_values.input_width  = std::stoi(config["input_width"]);  
+    cfg_values.input_height  = std::stoi(config["input_height"]);  
+    cfg_values.anchors_path  = config["anchors"];                // 模型anchors路径
+    cfg_values.num_boxes = std::stoi(config["num_boxes"]);               // 你的模型输出框数量
+    cfg_values.num_keypoints = std::stoi(config["num_keypoints"]);       // BlazePalm 每个手 7 个关键点
+    cfg_values.resolution = std::stof(config["resolution"]);
+    cfg_values.score_threshold = std::stof(config["score_threshold"]); // 输入图片尺寸
+    cfg_values.max_frame_threshold = std::stoi(config["max_frame_threshold"]);
+
+    return cfg_values;
+}
+
 //  RGA图像数据,硬件处理加速
 bool nv21_to_rgb_resize(
     uint8_t* nv21,
@@ -239,35 +274,6 @@ void plotDetectBoxs(const std::string & image_path,const std::vector<PalmBox>& b
 }
 
 // 读取配置文件信息函数
-std::unordered_map<std::string, std::string> readConfig(const std::string& filename,ConfigInfo &cfg_values) {
-    std::unordered_map<std::string, std::string> config;
-    std::ifstream file(filename);
-
-    if (!file.is_open()) {
-        std::cerr << "Failed to open config file: " << filename << std::endl;
-        return config;
-    }
-
-    std::string line;
-    while (std::getline(file, line)) {
-        if (line.empty() || line[0] == '#') continue; // 跳过空行和注释
-
-        std::istringstream iss(line);
-        std::string key, value;
-        if (std::getline(iss, key, '=') && std::getline(iss, value)) {
-            config[key] = value;
-        }
-    }
-
-    cfg_values.model_path  = config["model_path"].c_str(); 
-    cfg_values.anchors_path  = config["anchors"];                // 模型anchors路径
-    cfg_values.num_boxes = std::stoi(config["num_boxes"]);               // 你的模型输出框数量
-    cfg_values.num_keypoints = std::stoi(config["num_keypoints"]);       // BlazePalm 每个手 7 个关键点
-    cfg_values.resolution = std::stof(config["resolution"]);
-    cfg_values.score_threshold = std::stof(config["score_threshold"]); // 输入图片尺寸
-
-    return config;
-}
 
 
 double __get_us(struct timeval t) { return (t.tv_sec * 1000000 + t.tv_usec); }

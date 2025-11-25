@@ -79,6 +79,7 @@ add_executable(blaze_hand_detect_demo
         src/main.cpp
         src/blaze_hand_detect_rknn.cpp
         src/utils.cpp
+        src/event_control.cpp
 )
 
 target_link_libraries(blaze_hand_detect_demo
