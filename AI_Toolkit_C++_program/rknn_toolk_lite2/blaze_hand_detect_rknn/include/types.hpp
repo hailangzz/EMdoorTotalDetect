@@ -18,7 +18,10 @@ struct PalmBox {
 };
 
 struct ConfigInfo {
-    const char* model_path;
+    // const char* model_path;
+    std::string model_path;
+    int input_width;
+    int input_height;
     std::string anchors_path;
     int num_boxes;
     int num_keypoints; 

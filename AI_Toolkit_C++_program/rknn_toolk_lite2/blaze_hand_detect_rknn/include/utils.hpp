@@ -6,10 +6,9 @@
 #include <fstream>
 
 
-
-void use_utils_read_videos_info(VideoInfo& videos_infos);
-
 bool resizeImage(const std::string& image_path,std::vector<float>& output_data,std::vector<int64_t>& input_shape);
+
+std::vector<float> preprocess_image(const cv::Mat& img, int target_w, int target_h);
 
 static float computeIOU(const PalmBox& a, const PalmBox& b);
 

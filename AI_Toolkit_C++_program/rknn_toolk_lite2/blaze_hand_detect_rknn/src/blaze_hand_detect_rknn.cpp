@@ -1,14 +1,14 @@
 #include "blaze_hand_detect_rknn.hpp"
-#include <cstring>
+
 
 namespace HandDetectRknn {
 
 // 析构函数释放 RKNN 资源
 Detector::Detector() {
     
-    auto cfg = readConfig(Detector::config_file_,this->cfg_values_);
+    auto cfg = readConfig(this->config_file_,this->cfg_values_);
 
-    Detector::anchors_ = loadAnchorsBin(this->cfg_values_.anchors_path);
+    this->anchors_ = loadAnchorsBin(this->cfg_values_.anchors_path);
 
 }
 
@@ -20,6 +20,9 @@ Detector::~Detector() {
     }
 }
 
+ConfigInfo Detector::getModelparameter(){
+    return this->cfg_values_;
+}
 // 加载模型
 bool Detector::loadModel(const std::string& model_path) {
     FILE* fp = fopen(model_path.c_str(), "rb");
@@ -61,7 +64,7 @@ bool Detector::loadModel(const std::string& model_path) {
 }
 
 // 推理
-std::vector<PalmBox>  Detector::infer(const std::vector<float>& input, const std::vector<int64_t>& shape) {
+std::vector<PalmBox>  Detector::infer(const std::vector<float>& input) {
     std::vector<PalmBox>  results;
 
     if (ctx_ == 0) {
@@ -69,7 +72,7 @@ std::vector<PalmBox>  Detector::infer(const std::vector<float>& input, const std
         return results;
     }
 
-    if (input.empty() || shape.size() != 4) {
+    if (input.empty()) {
         std::cerr << "Invalid input tensor" << std::endl;
         return results;
     }
@@ -235,6 +238,8 @@ std::unordered_map<std::string, std::string> Detector::readConfig(const std::str
     }
 
     cfg_values.model_path  = config["model_path"].c_str(); 
+    cfg_values.input_width  = std::stoi(config["input_width"]);  
+    cfg_values.input_height  = std::stoi(config["input_height"]);  
     cfg_values.anchors_path  = config["anchors"];                // 模型anchors路径
     cfg_values.num_boxes = std::stoi(config["num_boxes"]);               // 你的模型输出框数量
     cfg_values.num_keypoints = std::stoi(config["num_keypoints"]);       // BlazePalm 每个手 7 个关键点

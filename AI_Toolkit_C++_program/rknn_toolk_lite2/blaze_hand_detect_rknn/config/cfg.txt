@@ -6,6 +6,8 @@
 // 预测框置信度
 
 model_path=./model/palm_detection_full.rknn
+input_width=192
+input_height=192
 anchors=./model/anchors_192.bin
 num_boxes=2016
 num_keypoints=7

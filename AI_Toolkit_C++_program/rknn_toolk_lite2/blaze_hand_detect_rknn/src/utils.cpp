@@ -39,7 +39,24 @@ bool resizeImage(const std::string& image_path,
     return true;
 }
 
+std::vector<float> preprocess_image(const cv::Mat& img, int target_w, int target_h) {
+    cv::Mat resized;
+    cv::resize(img, resized, cv::Size(target_w, target_h));
+    cv::Mat img_float;
+    resized.convertTo(img_float, CV_32FC3, 1.0 / 255.0); // 归一化
 
+    std::vector<float> input_data(target_w * target_h * 3);
+    int idx = 0;
+    for (int h = 0; h < target_h; ++h) {
+        for (int w = 0; w < target_w; ++w) {
+            cv::Vec3f pixel = img_float.at<cv::Vec3f>(h, w);
+            input_data[idx++] = pixel[2]; // R
+            input_data[idx++] = pixel[1]; // G
+            input_data[idx++] = pixel[0]; // B
+        }
+    }
+    return input_data;
+}
 
 
 // 计算两个 bbox 的 IOU

@@ -1,5 +1,5 @@
 #pragma once
-#include <vector>
+
 #include <string>
 #include "RgaUtils.h"
 #include "im2d.h"
@@ -23,9 +23,11 @@ class Detector {
         Detector();
         ~Detector();
 
+        ConfigInfo getModelparameter();
+
         bool loadModel(const std::string& model_path);
-        std::vector<PalmBox>  infer(const std::vector<float>& input,
-                                    const std::vector<int64_t>& shape);
+
+        std::vector<PalmBox>  infer(const std::vector<float>& input);
 
         
         std::vector<PalmBox> parseRknnOutputs(
@@ -34,10 +36,8 @@ class Detector {
                                     int num_boxes,
                                     int num_keypoints,
                                     float resolution,
-                                    float score_threshold);   
+                                    float score_threshold);
         
-                                    
-
 
     private:
 
