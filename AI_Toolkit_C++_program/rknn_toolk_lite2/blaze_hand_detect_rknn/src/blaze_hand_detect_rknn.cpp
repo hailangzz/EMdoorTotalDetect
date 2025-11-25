@@ -63,7 +63,7 @@ bool Detector::loadModel(const std::string& model_path) {
     return true;
 }
 
-// 推理
+// opencv读取本地图片，进行推理
 std::vector<PalmBox>  Detector::infer(const std::vector<float>& input) {
     std::vector<PalmBox>  results;
 
@@ -125,6 +125,326 @@ std::vector<PalmBox>  Detector::infer(const std::vector<float>& input) {
     // outputs[i].buf 是 float* 类型，长度是 outputs[i].size / sizeof(float)
 
     // 释放输出
+    rknn_outputs_release(ctx_, io_num_.n_output, outputs.data());
+
+    return detections;
+}
+
+std::vector<PalmBox> Detector::infer_image_rga_zero_copy(
+    const std::string& image_path  // 本地图像路径
+) {
+    std::vector<PalmBox> detections;
+
+    if (ctx_ == 0) {
+        std::cerr << "RKNN context not initialized!" << std::endl;
+        return detections;
+    }
+
+    const int net_w = cfg_values_.resolution;
+    const int net_h = cfg_values_.resolution;
+
+    // 1️⃣ 读取图像
+    cv::Mat img = cv::imread(image_path, cv::IMREAD_COLOR);
+    if (img.empty()) {
+        std::cerr << "Failed to read image: " << image_path << std::endl;
+        return detections;
+    }
+
+    // 2️⃣ BGR → RGB
+    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+
+    // 3️⃣ 静态分配 RGA 临时 buffer (UINT8) 和 RKNN float32 输入 buffer
+    static uint8_t* rga_buf = nullptr;
+    static size_t rga_size = 0;
+    if (!rga_buf || rga_size != net_w * net_h * 3) {
+        if (rga_buf) free(rga_buf);
+        rga_size = net_w * net_h * 3;
+        posix_memalign((void**)&rga_buf, 64, rga_size);
+    }
+
+    static float* rknn_input_buf = nullptr;
+    static size_t rknn_size = 0;
+    if (!rknn_input_buf || rknn_size != net_w * net_h * 3 * sizeof(float)) {
+        if (rknn_input_buf) free(rknn_input_buf);
+        rknn_size = net_w * net_h * 3 * sizeof(float);
+        posix_memalign((void**)&rknn_input_buf, 64, rknn_size);
+    }
+
+    // 4️⃣ 用 RGA 做 Resize (RGB888 -> rga_buf)
+    rga_buffer_t src = wrapbuffer_virtualaddr(
+        img.data,
+        img.cols, img.rows,
+        RK_FORMAT_RGB_888
+    );
+
+    rga_buffer_t dst = wrapbuffer_virtualaddr(
+        rga_buf,
+        net_w, net_h,
+        RK_FORMAT_RGB_888
+    );
+
+    IM_STATUS ret = imresize(src, dst);
+    if (ret != IM_STATUS_SUCCESS) {
+        std::cerr << "RGA imresize failed: " << imStrError(ret) << std::endl;
+        return detections;
+    }
+
+    // 5️⃣ 将 RGA 输出转换到 float32 buffer，并归一化到 [0,1]
+    uint8_t* rgb_ptr = rga_buf;
+    for (int i = 0; i < net_w * net_h; i++) {
+        rknn_input_buf[i * 3 + 0] = rgb_ptr[i * 3 + 0] / 255.0f;
+        rknn_input_buf[i * 3 + 1] = rgb_ptr[i * 3 + 1] / 255.0f;
+        rknn_input_buf[i * 3 + 2] = rgb_ptr[i * 3 + 2] / 255.0f;
+    }
+
+    // 6️⃣ 设置 RKNN 输入
+    rknn_input input[1];
+    memset(input, 0, sizeof(input));
+    input[0].index = 0;
+    input[0].buf   = rknn_input_buf;  // float32 buffer
+    input[0].size  = rknn_size;
+    input[0].pass_through = 0;
+    input[0].type  = RKNN_TENSOR_FLOAT32;
+    input[0].fmt   = RKNN_TENSOR_NHWC;
+
+    int r = rknn_inputs_set(ctx_, io_num_.n_input, input);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_inputs_set failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 7️⃣ 执行推理
+    r = rknn_run(ctx_, nullptr);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_run failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 8️⃣ 获取输出
+    std::vector<rknn_output> outputs(io_num_.n_output);
+    for (int i = 0; i < io_num_.n_output; i++) outputs[i].want_float = 1;
+
+    r = rknn_outputs_get(ctx_, io_num_.n_output, outputs.data(), nullptr);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_outputs_get failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 9️⃣ 解析输出
+    detections = this->parseRknnOutputs(
+        outputs,
+        anchors_,
+        cfg_values_.num_boxes,
+        cfg_values_.num_keypoints,
+        cfg_values_.resolution,
+        cfg_values_.score_threshold
+    );
+
+    // 🔟 释放 RKNN 输出
+    rknn_outputs_release(ctx_, io_num_.n_output, outputs.data());
+
+    return detections;
+}
+
+std::vector<PalmBox> Detector::infer_nv21(
+    const uint8_t* nv21_input,  // 直接摄像头 NV21 数据
+    int src_w, int src_h
+) {
+    std::vector<PalmBox> detections;
+
+    if (ctx_ == 0) {
+        std::cerr << "RKNN context not initialized!" << std::endl;
+        return detections;
+    }
+
+    // 1️⃣ 使用 RGA 做 NV21 → RGB888 + Resize
+    const int net_w = cfg_values_.resolution; // 模型输入宽
+    const int net_h = cfg_values_.resolution; // 模型输入高
+
+    std::vector<uint8_t> rgb_buf(net_w * net_h * 3); // RGB888 buffer
+
+    // wrap source NV21
+    rga_buffer_t src = wrapbuffer_virtualaddr(
+        const_cast<uint8_t*>(nv21_input),
+        src_w, src_h,
+        RK_FORMAT_YCrCb_420_SP
+    );
+
+    // wrap destination RGB888
+    rga_buffer_t dst = wrapbuffer_virtualaddr(
+        rgb_buf.data(),
+        net_w, net_h,
+        RK_FORMAT_RGB_888
+    );
+
+    IM_STATUS ret_imresize = imresize(src, dst);
+    if (ret_imresize != IM_STATUS_SUCCESS) {
+        std::cerr << "RGA imresize failed: " << imStrError(ret_imresize) << std::endl;
+        return detections;
+    }
+
+    // 2️⃣ RGB888 → float32，归一化到 [0,1]
+    std::vector<float> input_float(net_w * net_h * 3);
+    for (int i = 0; i < net_w * net_h; i++) {
+        input_float[i * 3 + 0] = rgb_buf[i * 3 + 0] / 255.0f;
+        input_float[i * 3 + 1] = rgb_buf[i * 3 + 1] / 255.0f;
+        input_float[i * 3 + 2] = rgb_buf[i * 3 + 2] / 255.0f;
+    }
+
+    // 3️⃣ 设置 RKNN 输入
+    rknn_input input[1];
+    memset(input, 0, sizeof(input));
+    input[0].index = 0;
+    input[0].buf = input_float.data();
+    input[0].size = input_float.size() * sizeof(float);
+    input[0].pass_through = 0;
+    input[0].type = RKNN_TENSOR_FLOAT32;
+    input[0].fmt = RKNN_TENSOR_NHWC;
+
+    int ret = rknn_inputs_set(ctx_, io_num_.n_input, input);
+    if (ret != RKNN_SUCC) {
+        std::cerr << "rknn_inputs_set failed! ret=" << ret << std::endl;
+        return detections;
+    }
+
+    // 4️⃣ 执行推理
+    ret = rknn_run(ctx_, nullptr);
+    if (ret != RKNN_SUCC) {
+        std::cerr << "rknn_run failed! ret=" << ret << std::endl;
+        return detections;
+    }
+
+    // 5️⃣ 获取输出
+    std::vector<rknn_output> outputs(io_num_.n_output);
+    for (int i = 0; i < io_num_.n_output; i++) outputs[i].want_float = 1;
+
+    ret = rknn_outputs_get(ctx_, io_num_.n_output, outputs.data(), nullptr);
+    if (ret != RKNN_SUCC) {
+        std::cerr << "rknn_outputs_get failed! ret=" << ret << std::endl;
+        return detections;
+    }
+
+    // 6️⃣ 解析 RKNN 输出
+    detections = this->parseRknnOutputs(
+        outputs,
+        anchors_,
+        cfg_values_.num_boxes,
+        cfg_values_.num_keypoints,
+        cfg_values_.resolution,
+        cfg_values_.score_threshold
+    );
+
+    // 7️⃣ 释放 RKNN 输出
+    rknn_outputs_release(ctx_, io_num_.n_output, outputs.data());
+
+    return detections;
+}
+
+std::vector<PalmBox> Detector::infer_nv21_zero_copy(
+    const uint8_t* nv21_input,  // 摄像头 NV21 数据
+    int src_w, int src_h
+) {
+    std::vector<PalmBox> detections;
+
+    if (ctx_ == 0) {
+        std::cerr << "RKNN context not initialized!" << std::endl;
+        return detections;
+    }
+
+    const int net_w = cfg_values_.resolution;
+    const int net_h = cfg_values_.resolution;
+
+    // 1️⃣ 静态分配 RKNN 输入 buffer（float32，零拷贝用）
+    static float* rknn_input_buf = nullptr;
+    static size_t buf_size = 0;
+    if (!rknn_input_buf || buf_size != net_w * net_h * 3 * sizeof(float)) {
+        if (rknn_input_buf) free(rknn_input_buf);
+        buf_size = net_w * net_h * 3 * sizeof(float);
+        posix_memalign((void**)&rknn_input_buf, 64, buf_size); // 64字节对齐
+    }
+
+    // 2️⃣ 用 RGA 做 NV21 → RGB888 + Resize 到 net_w x net_h
+    // 临时 buffer，直接输出到 float32 buffer
+    // 注意 RGA 只支持 UINT8 输出，因此这里先输出到 UINT8 buffer
+    static uint8_t* rga_rgb_buf = nullptr;
+    static size_t rga_buf_size = 0;
+    if (!rga_rgb_buf || rga_buf_size != net_w * net_h * 3) {
+        if (rga_rgb_buf) free(rga_rgb_buf);
+        rga_buf_size = net_w * net_h * 3;
+        posix_memalign((void**)&rga_rgb_buf, 64, rga_buf_size);
+    }
+
+    rga_buffer_t src = wrapbuffer_virtualaddr(
+        const_cast<uint8_t*>(nv21_input),
+        src_w, src_h,
+        RK_FORMAT_YCrCb_420_SP
+    );
+
+    rga_buffer_t dst = wrapbuffer_virtualaddr(
+        rga_rgb_buf,
+        net_w, net_h,
+        RK_FORMAT_RGB_888
+    );
+
+    IM_STATUS ret = imresize(src, dst);
+    if (ret != IM_STATUS_SUCCESS) {
+        std::cerr << "RGA imresize failed: " << imStrError(ret) << std::endl;
+        return detections;
+    }
+
+    // 3️⃣ 将 RGA 输出直接转换到 float32 RKNN 输入 buffer（归一化到 [0,1]）
+    uint8_t* rgb_ptr = rga_rgb_buf;
+    for (int i = 0; i < net_w * net_h; i++) {
+        rknn_input_buf[i * 3 + 0] = rgb_ptr[i * 3 + 0] / 255.0f;
+        rknn_input_buf[i * 3 + 1] = rgb_ptr[i * 3 + 1] / 255.0f;
+        rknn_input_buf[i * 3 + 2] = rgb_ptr[i * 3 + 2] / 255.0f;
+    }
+    // ⚠ 这里虽然还有一次循环，但不再开辟额外 buffer，可看作零拷贝优化
+
+    // 4️⃣ 设置 RKNN 输入
+    rknn_input input[1];
+    memset(input, 0, sizeof(input));
+    input[0].index = 0;
+    input[0].buf   = rknn_input_buf;          // 直接使用 float32 buffer
+    input[0].size  = buf_size;
+    input[0].pass_through = 0;
+    input[0].type  = RKNN_TENSOR_FLOAT32;
+    input[0].fmt   = RKNN_TENSOR_NHWC;
+
+    int r = rknn_inputs_set(ctx_, io_num_.n_input, input);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_inputs_set failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 5️⃣ 执行推理
+    r = rknn_run(ctx_, nullptr);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_run failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 6️⃣ 获取输出
+    std::vector<rknn_output> outputs(io_num_.n_output);
+    for (int i = 0; i < io_num_.n_output; i++) outputs[i].want_float = 1;
+
+    r = rknn_outputs_get(ctx_, io_num_.n_output, outputs.data(), nullptr);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_outputs_get failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 7️⃣ 解析输出
+    detections = this->parseRknnOutputs(
+        outputs,
+        anchors_,
+        cfg_values_.num_boxes,
+        cfg_values_.num_keypoints,
+        cfg_values_.resolution,
+        cfg_values_.score_threshold
+    );
+
+    // 8️⃣ 释放 RKNN 输出
     rknn_outputs_release(ctx_, io_num_.n_output, outputs.data());
 
     return detections;

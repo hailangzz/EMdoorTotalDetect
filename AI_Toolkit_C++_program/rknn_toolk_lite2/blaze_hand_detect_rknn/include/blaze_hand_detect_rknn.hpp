@@ -1,13 +1,6 @@
 #pragma once
-
+#include <vector>
 #include <string>
-#include "RgaUtils.h"
-#include "im2d.h"
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/imgproc.hpp"
-#include "postprocess.hpp"
-#include "rga.h"
 #include "types.hpp"
 #include "rknn_api.h"
 #include "utils.hpp"
@@ -27,9 +20,14 @@ class Detector {
 
         bool loadModel(const std::string& model_path);
 
-        std::vector<PalmBox>  infer(const std::vector<float>& input);
-
+        //opencv 读取图像
+        std::vector<PalmBox> infer(const std::vector<float>& input);
+        std::vector<PalmBox> infer_image_rga_zero_copy(const std::string& image_path);
         
+         // 直接摄像头 NV21 数据
+        std::vector<PalmBox> infer_nv21(const uint8_t* nv21_input, int src_w, int src_h);
+        // 摄像头 NV21 数据  ，零拷贝                          
+        std::vector<PalmBox> infer_nv21_zero_copy(const uint8_t* nv21_input,int src_w, int src_h);
         std::vector<PalmBox> parseRknnOutputs(
                                     const std::vector<rknn_output>& outputs,
                                     const std::vector<float>& anchors,

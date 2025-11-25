@@ -1,6 +1,4 @@
 #pragma once
-#include <stdio.h>
-#include <stdlib.h>
 
 struct VideoInfo{
   std::string video_path = "test.mp4";
@@ -14,7 +12,7 @@ struct VideoInfo{
 struct PalmBox {
     float score;
     float x, y, w, h;
-    std::vector<float> keypoints; // 14 float, x1,y1,...,x7,y7
+    std::vector<float> keypoints;
 };
 
 struct ConfigInfo {

@@ -5,6 +5,13 @@
 #include <unordered_map>
 #include <fstream>
 
+#include <im2d.h>
+#include <rga.h>
+#include <RgaApi.h>
+
+bool nv21_to_rgb_resize(const uint8_t* nv21_data,int src_w, int src_h,uint8_t* rgb_data,int dst_w, int dst_h);
+
+void rgb_to_float(const uint8_t* rgb, float* out, int w, int h);
 
 bool resizeImage(const std::string& image_path,std::vector<float>& output_data,std::vector<int64_t>& input_shape);
 
@@ -24,6 +31,6 @@ void plotDetectBoxs(const std::string & image_path,const std::vector<PalmBox>& b
 
 std::unordered_map<std::string, std::string> readConfig(const std::string& filename,ConfigInfo &cfg_values);   // 读取配置文件信息
 
-
+double __get_us(struct timeval t);
 
 

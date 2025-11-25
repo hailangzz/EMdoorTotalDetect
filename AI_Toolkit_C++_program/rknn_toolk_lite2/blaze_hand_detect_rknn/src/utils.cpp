@@ -1,5 +1,44 @@
 #include "utils.hpp"
 
+//  RGA图像数据,硬件处理加速
+bool nv21_to_rgb_resize(
+    uint8_t* nv21,
+    int src_w, int src_h,
+    uint8_t* rgb,
+    int dst_w, int dst_h
+) {
+    // wrap source NV21
+    rga_buffer_t src = wrapbuffer_virtualaddr(
+        nv21,
+        src_w, src_h,
+        RK_FORMAT_YCrCb_420_SP // NV21
+    );
+
+    // wrap destination RGB888
+    rga_buffer_t dst = wrapbuffer_virtualaddr(
+        rgb,
+        dst_w, dst_h,
+        RK_FORMAT_RGB_888
+    );
+
+    IM_STATUS ret = imresize(src, dst);
+    if (ret != IM_STATUS_SUCCESS) {
+        printf("RGA imresize failed: %s\n", imStrError(ret));
+        return false;
+    }
+
+    return true;
+}
+
+void rgb_to_float(const uint8_t* rgb, float* out, int w, int h) {
+    int pixel_cnt = w * h;
+    for (int i = 0; i < pixel_cnt; i++) {
+        out[i * 3 + 0] = rgb[i * 3 + 0] / 255.0f;
+        out[i * 3 + 1] = rgb[i * 3 + 1] / 255.0f;
+        out[i * 3 + 2] = rgb[i * 3 + 2] / 255.0f;
+    }
+}
+
 
 bool resizeImage(const std::string& image_path,
                      std::vector<float>& output_data,
@@ -231,5 +270,5 @@ std::unordered_map<std::string, std::string> readConfig(const std::string& filen
 }
 
 
-
+double __get_us(struct timeval t) { return (t.tv_sec * 1000000 + t.tv_usec); }
 
