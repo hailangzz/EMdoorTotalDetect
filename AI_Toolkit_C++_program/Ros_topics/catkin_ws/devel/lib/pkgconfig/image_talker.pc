@@ -1,0 +1,8 @@
+prefix=/home/chenkejing/catkin_ws/devel
+
+Name: image_talker
+Description: Description of image_talker
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

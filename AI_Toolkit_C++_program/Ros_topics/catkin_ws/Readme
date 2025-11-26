@@ -1,0 +1,209 @@
+1、创建image_topic
+mkdir -p ~/catkin_ws/src
+1️⃣ 进入你的工作空间
+假设你的 ROS 工作空间是 ~/catkin_ws，如果还没有，可以先创建：
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws
+catkin_make
+source devel/setup.bash
+
+- src 目录用于存放所有 ROS 包
+- catkin_make 会编译工作空间
+- source devel/setup.bash 配置环境变量
+--------------------------------------------------------------------------------
+2️⃣ 创建新包
+在 src 下使用 catkin_create_pkg 命令：
+cd ~/catkin_ws/src
+//catkin_create_pkg <package_name> <dependencies>
+catkin_create_pkg image_talker roscpp std_msgs sensor_msgs cv_bridge
+示例：
+如果你想创建一个名为 image_talker 的包，需要依赖 roscpp、std_msgs、sensor_msgs、cv_bridge：
+catkin_create_pkg image_talker roscpp std_msgs sensor_msgs cv_bridge
+
+这条命令会生成一个基本包目录结构：
+image_talker/
+├── CMakeLists.txt
+├── package.xml
+└── src/
+
+--------------------------------------------------------------------------------
+3️⃣ 查看和修改 CMakeLists.txt
+catkin_create_pkg 会生成一个默认的 CMakeLists.txt，你需要根据你的需求修改：
+- 添加 OpenCV 查找
+- 添加可执行文件
+例如：
+cmake_minimum_required(VERSION 3.0.2)
+project(image_talker)
+
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  std_msgs
+  sensor_msgs
+  cv_bridge
+)
+
+find_package(OpenCV REQUIRED)
+
+catkin_package()
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
+)
+
+add_executable(image_talker_node src/image_talker.cpp)
+target_link_libraries(image_talker_node
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
+
+--------------------------------------------------------------------------------
+4️⃣ 修改 package.xml
+确认依赖项正确：
+<package format="2">
+  <name>image_talker</name>
+  <version>0.0.1</version>
+  <description>Publish images using ROS</description>
+
+  <maintainer email="your@email.com">You</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
+</package>
+
+--------------------------------------------------------------------------------
+5️⃣ 添加源码文件
+在 src 目录下创建 image_talker.cpp（参考我前面给你的 talker_image.cpp 示例）。
+目录结构如下：
+~/catkin_ws/src/image_talker/
+├── CMakeLists.txt
+├── package.xml
+└── src/
+    └── image_talker.cpp
+
+image_talker.cpp
+#include <ros/ros.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/Image.h>
+#include <opencv2/opencv.hpp>
+
+int main(int argc, char** argv)
+{
+    ros::init(argc, argv, "image_talker");
+    ros::NodeHandle nh;
+
+    image_transport::ImageTransport it(nh);
+    image_transport::Publisher pub = it.advertise("camera/image", 1);
+
+    // 读取本地图片
+    std::string image_path = "/home/chenkejing/images/test.jpg"; // 替换成你本地图片路径
+    cv::Mat frame = cv::imread(image_path);
+    if (frame.empty()) {
+        ROS_ERROR("Cannot read image at %s", image_path.c_str());
+        return -1;
+    }
+
+    ros::Rate loop_rate(10); // 10 FPS
+    while (ros::ok()) {
+        // 转为 ROS Image 消息
+        sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();
+
+        pub.publish(msg);
+        ROS_INFO("Published image");
+
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
+
+    return 0;
+}
+
+
+--------------------------------------------------------------------------------
+6️⃣ 编译包
+回到工作空间根目录：
+cd ~/catkin_ws
+catkin_make
+
+编译完成后，执行：
+source devel/setup.bash
+
+--------------------------------------------------------------------------------
+7️⃣ 运行节点
+rosrun image_talker image_talker_node
+
+订阅测试：
+rosrun image_view image_view image:=/camera/image
+
+
+--------------------------------------------------------------------------------
+2、创建image_listener (监听节点)
+这里给你写一个对应的 ROS 图像监听节点（listener），用于接收你前面 image_talker 发送的 /camera/image 话题，并显示图像。
+假设文件名为 src/image_listener.cpp：
+#include <ros/ros.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/Image.h>
+#include <opencv2/opencv.hpp>
+
+// 回调函数，每收到一帧图像就调用
+void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+{
+    try
+    {
+        // 将 ROS 图像消息转为 OpenCV 图像
+        cv::Mat frame = cv_bridge::toCvShare(msg, "bgr8")->image;
+
+        // 显示图像
+        cv::imshow("Received Image", frame);
+        cv::waitKey(1); // 必须调用才能刷新窗口
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+    }
+}
+
+int main(int argc, char** argv)
+{
+    ros::init(argc, argv, "image_listener"); // 节点名称
+    ros::NodeHandle nh;
+
+    image_transport::ImageTransport it(nh);
+    image_transport::Subscriber sub = it.subscribe("camera/image", 1, imageCallback);
+
+    ROS_INFO("Subscribed to /camera/image topic, waiting for images...");
+
+    ros::spin(); // 循环等待回调
+    return 0;
+}
+
+--------------------------------------------------------------------------------
+CMakeLists.txt 配置
+在 CMakeLists.txt 中添加 listener：
+add_executable(image_listener src/image_listener.cpp)
+target_link_libraries(image_listener ${catkin_LIBRARIES})
+
+--------------------------------------------------------------------------------
+运行步骤
+1.启动 ROS master：
+roscore
+
+1.运行图像发布节点：
+rosrun image_talker image_talker_node
+
+1.运行图像监听节点：
+rosrun image_talker image_listener
+
+1.你会看到 OpenCV 窗口显示图像。
+--------------------------------------------------------------------------------
+💡 提示：
+- cv::waitKey(1) 必须调用，否则窗口不会刷新
+- 可以调整 loop_rate 控制发送频率
+- 适合单张图片循环发送或视频帧流
