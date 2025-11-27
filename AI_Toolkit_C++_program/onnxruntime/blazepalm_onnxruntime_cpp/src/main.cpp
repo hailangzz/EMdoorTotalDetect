@@ -5,6 +5,10 @@
 #include "blaze_hand_detect.hpp"
 #include "types.hpp"
 #include "utils.hpp"
+#include <ros/ros.h>
+#include <thread>
+
+#include "image_listener.hpp"
 
 using namespace HandDetect;
 
@@ -49,7 +53,39 @@ int main(int argc, char** argv)
     std::vector<PalmBox> boxes = hand_detect.rawOutputToDetections(
         raw_boxes, raw_scores, anchors, cfg_values.num_boxes, cfg_values.num_keypoints, cfg_values.resolution, cfg_values.score_threshold);
 
-    plotDetectBoxs(image_path,boxes);
+
+    // 接入ros topic数据
+
+    ros::init(argc, argv, "hand_detector_node");
+    ros::NodeHandle nh;
+
+    ImageListener listener(nh);
+    // 让 ROS 回调在独立线程中运行
+    std::thread ros_thread([]() {
+        ros::spin();
+    });
+
+    ros::Rate rate(30); // 推理频率
+    cv::Mat frame;
+
+    while (ros::ok())
+    {
+        if (listener.getLatestBGR(frame))
+        {
+            // frame 是 BGR 192×192，直接送入 ONNX 模型
+            auto [raw_boxes, raw_scores] = hand_detect.infer_output2(frame, input_shape);
+            std::vector<PalmBox> boxes = hand_detect.rawOutputToDetections(
+        raw_boxes, raw_scores, anchors, cfg_values.num_boxes, cfg_values.num_keypoints, cfg_values.resolution, cfg_values.score_threshold);
+
+
+        }
+
+        rate.sleep();
+    }
+
+    ros_thread.join();
+    // plotDetectBoxs(image_path,boxes);
+
 
     return 0;
 }
