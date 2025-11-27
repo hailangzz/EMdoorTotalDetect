@@ -1,0 +1,18 @@
+// 模型路径
+// anchors文件路径
+// 预测框个数
+// 手部关键点数量
+// 模型输入图像尺寸
+// 预测框置信度
+
+model_path=./model/palm_detection_full.rknn
+input_width=192
+input_height=192
+anchors=./model/anchors_192.bin
+num_boxes=2016
+num_keypoints=7
+resolution=192.f
+score_threshold=0.7f
+
+//手部检测帧数阈值
+max_frame_threshold=3

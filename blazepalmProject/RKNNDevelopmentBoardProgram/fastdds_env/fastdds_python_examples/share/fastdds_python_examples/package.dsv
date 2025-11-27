@@ -1,0 +1,6 @@
+source;share/fastdds_python_examples/hook/ld_library_path_lib.ps1
+source;share/fastdds_python_examples/hook/ld_library_path_lib.dsv
+source;share/fastdds_python_examples/hook/ld_library_path_lib.sh
+source;share/fastdds_python_examples/hook/pythonpath.ps1
+source;share/fastdds_python_examples/hook/pythonpath.dsv
+source;share/fastdds_python_examples/hook/pythonpath.sh

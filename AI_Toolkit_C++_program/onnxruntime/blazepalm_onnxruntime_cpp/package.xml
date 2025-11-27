@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>blazepalm_onnxruntime_cpp</name>
+  <version>0.0.1</version>
+  <description>The blazepalm_onnxruntime_cpp package</description>
+
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>MIT</license>
+
+  <!-- buildtool_depend 必须有 -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- 运行时依赖 -->
+  <build_depend>roscpp</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>cv_bridge</build_depend>
+
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>image_transport</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+
+</package>

@@ -1,0 +1,6 @@
+source;share/fastdds_python/hook/cmake_prefix_path.ps1
+source;share/fastdds_python/hook/cmake_prefix_path.dsv
+source;share/fastdds_python/hook/cmake_prefix_path.sh
+source;share/fastdds_python/hook/pythonpath.ps1
+source;share/fastdds_python/hook/pythonpath.dsv
+source;share/fastdds_python/hook/pythonpath.sh
