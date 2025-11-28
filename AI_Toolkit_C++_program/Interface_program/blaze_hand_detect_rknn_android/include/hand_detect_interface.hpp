@@ -2,6 +2,7 @@
 #define DETECTOR_H
 
 #include <stdint.h>  // for uint8_t
+#include <iostream>
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,6 +14,7 @@ struct AndroidImageNV21 {
     int image_height;
 };
 
+void hand_detect_set_config_path(const std::string& path);
 // 目标检测接口（使用指针，更兼容 C/JNI）
 bool hand_detect_interface(AndroidImageNV21* image_object_input);
 
