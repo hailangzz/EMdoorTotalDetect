@@ -2,7 +2,7 @@ import sys
 
 from rknn.api import RKNN
 
-DATASET_PATH = '../../../datasets/COCO/coco_subset_20.txt'
+DATASET_PATH = '/home/chenkejing/PycharmProjects/EMdoorTotalDetect/rk3588-convert-to-rknn/COCO/coco_subset_20.txt'
 DEFAULT_RKNN_PATH = '../model/yolov5.rknn'
 DEFAULT_QUANT = True
 
