@@ -1,0 +1,16 @@
+模型训练：
+
+    训练yolov8s模型
+    /home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/train_yolov8.py
+
+    训练yolov8s_focus模型
+    /home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/train_yolov8s_focus.py
+
+模型导出：pt -> onnx
+    正常模型导出：/home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/export_onnx_model.py
+
+    特别说明：当使用Focus算子时，模型训练时，使用原生Fouce算子训练。模型导出时，则该为自定义Fouce算子
+
+
+
+
