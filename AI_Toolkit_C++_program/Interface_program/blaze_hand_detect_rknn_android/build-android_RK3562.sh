@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-
+ANDROID_NDK_PATH=/home/chenkejing/RKNNProjects/CrossCompileToolChain/Android/android-ndk-r19c
 if [ -z ${ANDROID_NDK_PATH} ]
 then
   ANDROID_NDK_PATH=~/opt/android-ndk-r16b

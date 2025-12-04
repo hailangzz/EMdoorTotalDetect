@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 
 struct VideoInfo{
   std::string video_path = "test.mp4";
@@ -26,6 +27,7 @@ struct ConfigInfo {
     float resolution;
     float score_threshold;
     int max_frame_threshold;
+    std::string debug_nv21_image_saver;
 
 };
 

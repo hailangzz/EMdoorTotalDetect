@@ -1,6 +1,12 @@
 #include "blaze_hand_detect_rknn.hpp"
 
 
+#include <android/log.h>
+#define LOG_TAG "HandDetectInfer"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+
 namespace HandDetectRknn {
 
 // 析构函数释放 RKNN 资源
@@ -9,7 +15,7 @@ Detector::Detector(const ConfigInfo& config) {
     // auto cfg = readConfig(this->config_file_,this->cfg_values_);
     this->initModelparameter(config);
     this->anchors_ = loadAnchorsBin(this->cfg_values_.anchors_path);
-
+    LOGI("loadAnchorsBin is success.");
 }
 
 // 析构函数释放 RKNN 资源
@@ -23,12 +29,14 @@ Detector::~Detector() {
 void Detector::initModelparameter(ConfigInfo config_info){
 
     this->cfg_values_ = config_info;
+    this->loadModel(this->cfg_values_.model_path);
 }
 // 加载模型
 bool Detector::loadModel(const std::string& model_path) {
     FILE* fp = fopen(model_path.c_str(), "rb");
     if (!fp) {
         std::cerr << "Failed to open RKNN model file: " << model_path << std::endl;
+        LOGI("Failed to open RKNN model file.");
         return false;
     }
 
@@ -39,15 +47,18 @@ bool Detector::loadModel(const std::string& model_path) {
     model_data_.resize(model_size);
     if (fread(model_data_.data(), 1, model_size, fp) != model_size) {
         std::cerr << "Failed to read RKNN model file" << std::endl;
+        LOGI("Failed to read RKNN model file.");
         fclose(fp);
         return false;
     }
     fclose(fp);
 
+    
     // 创建 RKNN context
     int ret = rknn_init(&ctx_, model_data_.data(), model_size, 0, nullptr);
     if (ret != RKNN_SUCC) {
         std::cerr << "rknn_init failed! ret=" << ret << std::endl;
+        LOGI("rknn_init failed! .");
         return false;
     }
 
@@ -55,12 +66,13 @@ bool Detector::loadModel(const std::string& model_path) {
     ret = rknn_query(ctx_, RKNN_QUERY_IN_OUT_NUM, &io_num_, sizeof(io_num_));
     if (ret != RKNN_SUCC) {
         std::cerr << "rknn_query RKNN_QUERY_IN_OUT_NUM failed! ret=" << ret << std::endl;
+        LOGI("rknn_query RKNN_QUERY_IN_OUT_NUM failed! .");
         return false;
     }
 
     std::cout << "RKNN model loaded successfully. inputs=" << io_num_.n_input
               << " outputs=" << io_num_.n_output << std::endl;
-
+    LOGI("RKNN model loaded successfully.");
     return true;
 }
 
@@ -451,6 +463,117 @@ std::vector<PalmBox> Detector::infer_nv21_zero_copy(
     return detections;
 }
 
+std::vector<PalmBox> Detector::infer_nv21_zero_copy_BGR(
+    const uint8_t* nv21_input,  // 摄像头 NV21 数据
+    int src_w, int src_h
+) {
+    std::vector<PalmBox> detections;
+
+    if (ctx_ == 0) {
+        std::cerr << "RKNN context not initialized!" << std::endl;
+        return detections;
+    }
+
+    const int net_w = cfg_values_.resolution;
+    const int net_h = cfg_values_.resolution;
+
+    // 1️⃣ 静态分配 RKNN 输入 buffer（float32，零拷贝用）
+    static float* rknn_input_buf = nullptr;
+    static size_t buf_size = 0;
+    if (!rknn_input_buf || buf_size != net_w * net_h * 3 * sizeof(float)) {
+        if (rknn_input_buf) free(rknn_input_buf);
+        buf_size = net_w * net_h * 3 * sizeof(float);
+        posix_memalign((void**)&rknn_input_buf, 64, buf_size); // 64字节对齐
+    }
+
+    // 2️⃣ 用 RGA 做 NV21 → RGB888 + Resize 到 net_w x net_h
+    // 临时 buffer，直接输出到 float32 buffer
+    // 注意 RGA 只支持 UINT8 输出，因此这里先输出到 UINT8 buffer
+    static uint8_t* rga_rgb_buf = nullptr;
+    static size_t rga_buf_size = 0;
+    if (!rga_rgb_buf || rga_buf_size != net_w * net_h * 3) {
+        if (rga_rgb_buf) free(rga_rgb_buf);
+        rga_buf_size = net_w * net_h * 3;
+        posix_memalign((void**)&rga_rgb_buf, 64, rga_buf_size);
+    }
+
+    rga_buffer_t src = wrapbuffer_virtualaddr(
+        const_cast<uint8_t*>(nv21_input),
+        src_w, src_h,
+        RK_FORMAT_YCrCb_420_SP
+    );
+
+    rga_buffer_t dst = wrapbuffer_virtualaddr(
+        rga_rgb_buf,
+        net_w, net_h,
+        RK_FORMAT_RGB_888
+    );
+
+    IM_STATUS ret = imresize(src, dst);
+    if (ret != IM_STATUS_SUCCESS) {
+        std::cerr << "RGA imresize failed: " << imStrError(ret) << std::endl;
+        return detections;
+    }
+
+    // 3️⃣ 将 RGA 输出直接转换到 float32 RKNN 输入 buffer（归一化到 [0,1]）
+    uint8_t* rgb_ptr = rga_rgb_buf;
+    for (int i = 0; i < net_w * net_h; i++) {
+        rknn_input_buf[i * 3 + 0] = rgb_ptr[i * 3 + 2] / 255.0f;
+        rknn_input_buf[i * 3 + 1] = rgb_ptr[i * 3 + 1] / 255.0f;
+        rknn_input_buf[i * 3 + 2] = rgb_ptr[i * 3 + 0] / 255.0f;
+    }
+    // ⚠ 这里虽然还有一次循环，但不再开辟额外 buffer，可看作零拷贝优化
+
+    // 4️⃣ 设置 RKNN 输入
+    rknn_input input[1];
+    memset(input, 0, sizeof(input));
+    input[0].index = 0;
+    input[0].buf   = rknn_input_buf;          // 直接使用 float32 buffer
+    input[0].size  = buf_size;
+    input[0].pass_through = 0;
+    input[0].type  = RKNN_TENSOR_FLOAT32;
+    input[0].fmt   = RKNN_TENSOR_NHWC;
+
+    int r = rknn_inputs_set(ctx_, io_num_.n_input, input);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_inputs_set failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 5️⃣ 执行推理
+    r = rknn_run(ctx_, nullptr);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_run failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 6️⃣ 获取输出
+    std::vector<rknn_output> outputs(io_num_.n_output);
+    for (int i = 0; i < io_num_.n_output; i++) outputs[i].want_float = 1;
+
+    r = rknn_outputs_get(ctx_, io_num_.n_output, outputs.data(), nullptr);
+    if (r != RKNN_SUCC) {
+        std::cerr << "rknn_outputs_get failed! ret=" << r << std::endl;
+        return detections;
+    }
+
+    // 7️⃣ 解析输出
+    detections = this->parseRknnOutputs(
+        outputs,
+        anchors_,
+        cfg_values_.num_boxes,
+        cfg_values_.num_keypoints,
+        cfg_values_.resolution,
+        cfg_values_.score_threshold
+    );
+
+    // 8️⃣ 释放 RKNN 输出
+    rknn_outputs_release(ctx_, io_num_.n_output, outputs.data());
+
+    return detections;
+}
+
+
 void Detector::decodeBoxes(const std::vector<float>& raw_boxes,
                  const std::vector<float>& anchors,
                  std::vector<PalmBox>& boxes_out,
@@ -508,8 +631,15 @@ std::vector<PalmBox> Detector::rawOutputToDetections(const std::vector<float>& r
         float score = sigmoid(raw_scores[i]);
         if (score < score_threshold) continue;
 
+
         boxes[i].score = score;
         filtered_boxes.push_back(boxes[i]);
+
+        // 打印score和box信息
+        LOGI("Box %d: score=%.3f, x=%f, y=%f, w=%f, h=%f", 
+             i, score, boxes[i].x, boxes[i].y, boxes[i].w, boxes[i].h);
+
+
     }
 
     return nms(filtered_boxes, 0.3f);

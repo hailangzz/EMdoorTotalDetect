@@ -12,5 +12,9 @@
     特别说明：当使用Focus算子时，模型训练时，使用原生Fouce算子训练。模型导出时，则该为自定义Fouce算子
 
 
+转为rknn：onnx->rknn
+
+    python Myself_train_model/Onnx_export_rknn_model.py ../model/wire_foucs.onnx rk3588 u8 ../model/wire_foucs.rknn
+
 
 

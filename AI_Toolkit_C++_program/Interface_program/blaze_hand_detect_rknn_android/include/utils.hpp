@@ -1,12 +1,11 @@
 #include <string>
 #include <opencv2/opencv.hpp>
-#include "types.hpp"
 #include <iostream>
 #include <unordered_map>
 #include <fstream>
 #include <im2d.h>
 #include <rga.h>
-
+#include "types.hpp"
 
 ConfigInfo readConfig(const std::string& filename);
 

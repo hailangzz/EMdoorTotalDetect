@@ -16,3 +16,6 @@ score_threshold=0.7f
 
 //手部检测帧数阈值
 max_frame_threshold=3
+
+//debug 程序调试
+debug_nv21_image_saver=/sdcard/hand_debug_rgb

@@ -28,6 +28,8 @@ class Detector {
         std::vector<PalmBox> infer_nv21(const uint8_t* nv21_input, int src_w, int src_h);
         // 摄像头 NV21 数据  ，零拷贝                          
         std::vector<PalmBox> infer_nv21_zero_copy(const uint8_t* nv21_input,int src_w, int src_h);
+        std::vector<PalmBox> infer_nv21_zero_copy_BGR(const uint8_t* nv21_input, int src_w, int src_h);
+        
         std::vector<PalmBox> parseRknnOutputs(
                                     const std::vector<rknn_output>& outputs,
                                     const std::vector<float>& anchors,

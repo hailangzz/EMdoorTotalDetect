@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(blaze_hand_detect_project)
 
-# 生成 compile_commands.json
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -54,7 +51,7 @@ else()
 endif()
 find_package(OpenCV REQUIRED)
 
-#rga
+# rga
 if(TARGET_SOC STREQUAL "rk356x")
   set(RGA_PATH ${CMAKE_SOURCE_DIR}/../3rdparty/rga/RK356X)
 elseif(TARGET_SOC STREQUAL "rk3588")
@@ -67,32 +64,48 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Android")
 else()
   set(RGA_LIB ${RGA_PATH}/lib/Linux//${LIB_ARCH}/librga.so)
 endif()
-include_directories( ${RGA_PATH}/include)
+include_directories(${RGA_PATH}/include)
 
 set(CMAKE_INSTALL_RPATH "lib")
 
 # blaze_hand_detect_demo
-include_directories( ${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# add_executable(hand_detect_interface
-#         src/hand_detect_interface.cpp
-#         src/blaze_hand_detect_rknn.cpp
-#         src/utils.cpp
-#         src/event_control.cpp
-# )
+# ---------------------------------------------------------
+# ⭐⭐ 关键新增：查找 Android log 库 ⭐⭐
+# ---------------------------------------------------------
+if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+    find_library(log-lib log)
+endif()
 
 add_library(hand_detect_interface SHARED
         src/hand_detect_interface.cpp
         src/blaze_hand_detect_rknn.cpp
         src/utils.cpp
         src/event_control.cpp
+        src/debug.cpp
 )
 
-target_link_libraries(hand_detect_interface
-  ${RKNN_RT_LIB}
-  ${RGA_LIB}
-  ${OpenCV_LIBS}
-)
+# ---------------------------------------------------------
+# ⭐⭐ 关键新增：链接 Android log 库 ⭐⭐
+# ---------------------------------------------------------
+if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+    target_link_libraries(hand_detect_interface
+        ${RKNN_RT_LIB}
+        ${RGA_LIB}
+        ${OpenCV_LIBS}
+        ${log-lib}   # <-- ★★★ 加入这里！
+    )
+else()
+    target_link_libraries(hand_detect_interface
+        ${RKNN_RT_LIB}
+        ${RGA_LIB}
+        ${OpenCV_LIBS}
+    )
+endif()
+
+# 生成 compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # install target and libraries
 set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install/hand_detect_interface_${CMAKE_SYSTEM_NAME})

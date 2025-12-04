@@ -1,6 +1,5 @@
 #ifndef DETECTOR_H
 #define DETECTOR_H
-
 #include <stdint.h>  // for uint8_t
 #include <iostream>
 

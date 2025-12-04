@@ -31,6 +31,7 @@ ConfigInfo readConfig(const std::string& filename) {
     cfg_values.resolution = std::stof(config["resolution"]);
     cfg_values.score_threshold = std::stof(config["score_threshold"]); // 输入图片尺寸
     cfg_values.max_frame_threshold = std::stoi(config["max_frame_threshold"]);
+    cfg_values.debug_nv21_image_saver  = config["debug_nv21_image_saver"].c_str(); 
 
     return cfg_values;
 }
