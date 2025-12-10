@@ -11,7 +11,8 @@ public:
     explicit DebugNv21Saver(const std::string& save_dir);
 
     // 将 NV21 保存为 JPG
-    bool saveRgbFrame(const AndroidImageNV21& img);
+    void saveRgbFrame(const AndroidImageNV21& img);
+    void saveRgbFrameDetect(const AndroidImageNV21& img,std::vector<PalmBox>& results);
 
 private:
     bool ensureDirectory(const std::string& dir);

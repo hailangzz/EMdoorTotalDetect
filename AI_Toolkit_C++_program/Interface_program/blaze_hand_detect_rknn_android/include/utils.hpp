@@ -30,6 +30,7 @@ std::vector<float> loadAnchorsBin(const std::string& filename);
 void drawPalmBoxes(cv::Mat& image, const std::vector<PalmBox>& boxes);
 
 void plotDetectBoxs(const std::string & image_path,const std::vector<PalmBox>& boxes);
+cv::Mat plotDetectBoxsMat(cv::Mat & image_mat,const std::vector<PalmBox>& boxes);
 
 std::unordered_map<std::string, std::string> readConfig(const std::string& filename,ConfigInfo &cfg_values);   // 读取配置文件信息
 

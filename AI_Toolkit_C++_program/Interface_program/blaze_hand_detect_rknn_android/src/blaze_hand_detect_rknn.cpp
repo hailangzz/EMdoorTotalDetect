@@ -15,7 +15,7 @@ Detector::Detector(const ConfigInfo& config) {
     // auto cfg = readConfig(this->config_file_,this->cfg_values_);
     this->initModelparameter(config);
     this->anchors_ = loadAnchorsBin(this->cfg_values_.anchors_path);
-    LOGI("loadAnchorsBin is success.");
+    LOGI("load ConfigInfo is success.");
 }
 
 // 析构函数释放 RKNN 资源
@@ -35,7 +35,7 @@ void Detector::initModelparameter(ConfigInfo config_info){
 bool Detector::loadModel(const std::string& model_path) {
     FILE* fp = fopen(model_path.c_str(), "rb");
     if (!fp) {
-        std::cerr << "Failed to open RKNN model file: " << model_path << std::endl;
+        // std::cerr << "Failed to open RKNN model file: " << model_path << std::endl;
         LOGI("Failed to open RKNN model file.");
         return false;
     }
@@ -46,7 +46,7 @@ bool Detector::loadModel(const std::string& model_path) {
 
     model_data_.resize(model_size);
     if (fread(model_data_.data(), 1, model_size, fp) != model_size) {
-        std::cerr << "Failed to read RKNN model file" << std::endl;
+        // std::cerr << "Failed to read RKNN model file" << std::endl;
         LOGI("Failed to read RKNN model file.");
         fclose(fp);
         return false;
@@ -57,7 +57,7 @@ bool Detector::loadModel(const std::string& model_path) {
     // 创建 RKNN context
     int ret = rknn_init(&ctx_, model_data_.data(), model_size, 0, nullptr);
     if (ret != RKNN_SUCC) {
-        std::cerr << "rknn_init failed! ret=" << ret << std::endl;
+        // std::cerr << "rknn_init failed! ret=" << ret << std::endl;
         LOGI("rknn_init failed! .");
         return false;
     }
@@ -65,13 +65,12 @@ bool Detector::loadModel(const std::string& model_path) {
     // 获取输入输出信息
     ret = rknn_query(ctx_, RKNN_QUERY_IN_OUT_NUM, &io_num_, sizeof(io_num_));
     if (ret != RKNN_SUCC) {
-        std::cerr << "rknn_query RKNN_QUERY_IN_OUT_NUM failed! ret=" << ret << std::endl;
+        // std::cerr << "rknn_query RKNN_QUERY_IN_OUT_NUM failed! ret=" << ret << std::endl;
         LOGI("rknn_query RKNN_QUERY_IN_OUT_NUM failed! .");
         return false;
     }
 
-    std::cout << "RKNN model loaded successfully. inputs=" << io_num_.n_input
-              << " outputs=" << io_num_.n_output << std::endl;
+    // std::cout << "RKNN model loaded successfully. inputs=" << io_num_.n_input << " outputs=" << io_num_.n_output << std::endl;
     LOGI("RKNN model loaded successfully.");
     return true;
 }

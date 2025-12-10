@@ -6,7 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-
+#include "utils.hpp"
 
 #include <android/log.h>
 #define LOG_TAG "HandDetectDebug"
@@ -72,17 +72,19 @@ bool DebugNv21Saver::ensureDirectory(const std::string& dir)
 std::string DebugNv21Saver::generateFileName()
 {
     std::ostringstream oss;
-    oss << save_dir_
-        << "/rgb_"
-        << std::setw(5) << std::setfill('0') << frame_count_
-        << ".jpg";
+    // oss << save_dir_
+    //     << "/rgb_"
+    //     << std::setw(5) << std::setfill('0') << frame_count_
+    //     << ".jpg";            // 存储手势检测，结果图片存储路径；
+
+    oss << save_dir_<< "/hand_detect_result.jpg"; // 写死手势检测图片存储名称；
 
     frame_count_++;
     return oss.str();
 }
 
 // --------------------- NV21 → JPG 保存函数 ---------------------
-bool DebugNv21Saver::saveRgbFrame(const AndroidImageNV21& img)
+void DebugNv21Saver::saveRgbFrame(const AndroidImageNV21& img)
 {
     LOGI("[Debug] NV21 image ptr: %p, width: %d, height: %d", img.image_input_nv21, img.image_width, img.image_height);
 
@@ -102,7 +104,7 @@ bool DebugNv21Saver::saveRgbFrame(const AndroidImageNV21& img)
     if (!img.image_input_nv21 || w <= 0 || h <= 0) {
         std::cerr << "[Debug] Invalid NV21 image, skip saving." << std::endl;
         LOGI("[Debug] Invalid NV21 image, skip saving.");
-        return false;
+        
     }
 
     // 1. 构造 YUV Mat，NV21 = Y + VU
@@ -127,12 +129,45 @@ bool DebugNv21Saver::saveRgbFrame(const AndroidImageNV21& img)
     if (!cv::imwrite(filename, rgb)) {
         std::cerr << "[Debug] Failed to write JPG file: " << filename << std::endl;
         LOGI("[Debug] Failed to write JPG file:");
-        return false;
+        
     }
 
     std::cout << "[Debug] Saved frame => " << filename << std::endl;
     LOGI("[Debug] Saved RGB frame as JPG → %s", filename.c_str());
-    return true;
+}
+
+void DebugNv21Saver::saveRgbFrameDetect(const AndroidImageNV21& img,std::vector<PalmBox>& results)
+{
+
+    int w = img.image_width;
+    int h = img.image_height;
+
+    if (!img.image_input_nv21 || w <= 0 || h <= 0) {
+        std::cerr << "[Debug] Invalid NV21 image, skip saving." << std::endl;
+        LOGI("[Debug] Invalid NV21 image, skip saving.");
+    }
+
+    // 1. 构造 YUV Mat，NV21 = Y + VU
+    cv::Mat yuv(h + h / 2, w, CV_8UC1, img.image_input_nv21);
+
+    // 2. 转成 RGB/BGR
+    cv::Mat rgb;
+    cv::cvtColor(yuv, rgb, cv::COLOR_YUV2BGR_NV21);  
+    // BGR 是 OpenCV 默认格式，可直接保存 jpg
+
+    // 3. 生成 jpg 文件名
+    std::string filename = generateFileName();
+
+    rgb = plotDetectBoxsMat(rgb,results);
+
+    // 4. 保存 JPEG 文件
+    if (!cv::imwrite(filename, rgb)) {
+        std::cerr << "[Debug] Failed to write JPG file: " << filename << std::endl;
+        LOGI("[Debug] Failed to write JPG file:");
+    }
+
 }
 
 } // namespace HandDetectRknn
+
+

@@ -15,7 +15,8 @@ struct AndroidImageNV21 {
 
 void hand_detect_set_config_path(const std::string& path);
 // 目标检测接口（使用指针，更兼容 C/JNI）
-bool hand_detect_interface(AndroidImageNV21* image_object_input);
+// bool hand_detect_interface(AndroidImageNV21* image_object_input);
+bool hand_detect_interface(AndroidImageNV21* image_object_input,bool is_save_images);
 
 #ifdef __cplusplus
 }

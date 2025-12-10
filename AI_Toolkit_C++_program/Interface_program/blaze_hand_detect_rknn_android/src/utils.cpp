@@ -244,7 +244,7 @@ void drawPalmBoxes(cv::Mat& image, const std::vector<PalmBox>& boxes) {
     }
 }
 
-void plotDetectBoxs(const std::string & image_path,const std::vector<PalmBox>& boxes){
+ void plotDetectBoxs(const std::string & image_path,const std::vector<PalmBox>& boxes){
 
     cv::Mat image = cv::imread(image_path);
     
@@ -271,7 +271,38 @@ void plotDetectBoxs(const std::string & image_path,const std::vector<PalmBox>& b
 
     // 可选：保存到文件
     cv::imwrite("palm_detect_result.jpg", image);
+    
 
+}
+
+cv::Mat plotDetectBoxsMat(cv::Mat & image_mat,const std::vector<PalmBox>& boxes){
+
+    cv::Mat image = image_mat;
+    
+    // 5. 打印结果
+    for (size_t i = 0; i < boxes.size(); i++) {
+        const PalmBox& box = boxes[i];
+        std::cout << "Box " << i 
+                  << ": score=" << box.score 
+                  << " x=" << box.x 
+                  << " y=" << box.y 
+                  << " w=" << box.w 
+                  << " h=" << box.h 
+                  << std::endl;
+        std::cout << "  keypoints: ";
+        for (float kp : box.keypoints) std::cout << kp << " ";
+        std::cout << std::endl;
+    }
+
+    // 绘制检测结果
+    drawPalmBoxes(image, boxes);
+    // // 显示图像
+    // cv::imshow("Palm Detection", image);
+    // cv::waitKey(0);
+
+    // 可选：保存到文件
+    // cv::imwrite("palm_detect_result.jpg", image);
+    return image;
 }
 
 // 读取配置文件信息函数
