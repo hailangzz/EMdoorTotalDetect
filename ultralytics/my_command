@@ -1,0 +1,37 @@
+模型训练：
+
+    训练yolov8s模型
+    /home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/train_yolov8.py
+
+    训练yolov8s_focus模型
+    /home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/train_yolov8s_focus.py
+
+    
+
+模型导出：pt -> onnx
+    正常模型导出：/home/chenkejing/PycharmProjects/ultralytics/export_onnx_model_static.py (导出静态图)；/home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/export_onnx_model_dynamic.py（导出动态图）
+        cd /home/chenkejing/PycharmProjects/ultralytics;
+
+        python export_onnx_model_static.py -w /home/chenkejing/PycharmProjects/ultralytics/runs/detect/train9/weights/best.pt --sim
+
+        # 导出地毯识别ONNX模型：
+
+            python export_onnx_model_static.py -w /home/chenkejing/PycharmProjects/ultralytics/runs/my_carpet_exp/yolov8_focus_v12/weights/best.pt --sim
+
+            python export_onnx_model_static.py -w /home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/runs/my_wire_exp/yolov8_focus_v27/weights/best.pt --sim
+
+            python export_onnx_model_static.py -w /home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/runs/my_wire_exp/yolov8_focus_sa_v27/weights/best.pt --sim
+
+    特别说明：当使用Focus算子时，模型训练时，使用原生Fouce算子训练。模型导出时，则该为自定义Fouce算子
+
+
+
+转为rknn：onnx->rknn
+
+    python export_rknn_model/Onnx_export_rknn_model.py /home/chenkejing/PycharmProjects/ultralytics/runs/detect/train9/weights/best.onnx rk3588 i8 /home/chenkejing/PycharmProjects/ultralytics/rknn_models/wire_foucs.rknn
+    python export_rknn_model/Onnx_export_rknn_model.py /home/chenkejing/PycharmProjects/ultralytics/runs/detect/train9/weights/wire_foucs.onnx rk3588 i8 /home/chenkejing/PycharmProjects/ultralytics/rknn_models/wire_foucs.rknn
+
+    # 导出地毯识别RKNN模型
+    python export_rknn_model/Onnx_export_rknn_model.py /home/chenkejing/PycharmProjects/ultralytics/runs/my_carpet_exp/yolov8_focus_v12/weights/best.onnx rk3588 i8 /home/chenkejing/PycharmProjects/ultralytics/rknn_models/carpet_foucs.rknn
+
+
