@@ -52,6 +52,9 @@ __all__ = (
     "ResNetLayer",
     "SCDown",
     "TorchVision",
+    "EdgeConv",
+    "SpatialAttentionLiteReLU6",
+    "C2f_SA",
 )
 
 
@@ -1943,3 +1946,93 @@ class SAVPE(nn.Module):
         aggregated = score.transpose(-2, -3) @ x.reshape(B, self.c, C // self.c, -1).transpose(-1, -2)
 
         return F.normalize(aggregated.transpose(-2, -3).reshape(B, Q, -1), dim=-1, p=2)
+
+
+class EdgeConv(nn.Module):
+    """
+    Edge-enhanced Convolution for YOLOv8.
+    y = Conv(x) + alpha * Laplacian(x)
+    """
+
+    def __init__(self, c1, c2, k=3, s=1, p=1, alpha=0.5):
+        super().__init__()
+        self.conv = nn.Conv2d(c1, c2, k, s, p, bias=False)
+        self.bn = nn.BatchNorm2d(c2)
+        self.act = nn.LeakyReLU(inplace=True)
+        self.alpha = alpha
+
+        # Laplacian kernel 3x3
+        kernel = torch.tensor(
+            [[0, -1, 0],
+             [-1, 4, -1],
+             [0, -1, 0]], dtype=torch.float32
+        ).unsqueeze(0).unsqueeze(0)  # shape (1,1,3,3)
+
+        self.register_buffer("lap_kernel", kernel)
+
+    def forward(self, x):
+        # standard conv feature
+        y = self.act(self.bn(self.conv(x)))
+
+        # edge feature (laplacian)
+        lap = F.conv2d(x, self.lap_kernel.repeat(x.size(1), 1, 1, 1),
+                       padding=1, groups=x.size(1))
+
+        return y + self.alpha * lap
+
+class SpatialAttentionLiteReLU6(nn.Module):
+    """
+    轻量化空间注意力模块（ReLU6版本），适合嵌入式板端（RKNN）部署。
+    输入: (B, C, H, W)
+    输出: (B, C, H, W)
+    """
+    def __init__(self, kernel_size=3):
+        super(SpatialAttentionLiteReLU6, self).__init__()
+        assert kernel_size % 2 == 1, "kernel_size must be odd"
+        padding = kernel_size // 2
+
+        # 空间注意力卷积: 输入通道=2 (avg+max)，输出通道=1
+        self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=padding, bias=False)
+        # 卷积权重初始化
+        nn.init.kaiming_normal_(self.conv.weight, a=0, mode='fan_in')
+
+    def forward(self, x):
+        # 平均池化和最大池化 (channel维度)
+        avg_out = torch.mean(x, dim=1, keepdim=True)   # (B, 1, H, W)
+        max_out, _ = torch.max(x, dim=1, keepdim=True) # (B, 1, H, W)
+        y = torch.cat([avg_out, max_out], dim=1)       # (B, 2, H, W)
+
+        # ReLU6 激活 + 归一化
+        y = F.relu6(self.conv(y)) / 6                  # 输出范围 [0,1]
+
+        # 注意力加权
+        return x * y
+
+
+class C2f_SA(nn.Module):
+    """C2f + 轻量化空间注意力模块"""
+
+    def __init__(self, c1: int, c2: int, n: int = 1, shortcut: bool = False, g: int = 1, e: float = 0.5):
+        super().__init__()
+        self.c = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
+        self.cv2 = Conv((2 + n) * self.c, c2, 1)
+        self.m = nn.ModuleList(
+            Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n)
+        )
+        self.sa = SpatialAttentionLiteReLU6(kernel_size=3)  # 加入空间注意力
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        y = list(self.cv1(x).chunk(2, 1))
+        y.extend(m(y[-1]) for m in self.m)
+        y = self.cv2(torch.cat(y, 1))
+        y = self.sa(y)  # 在输出特征图上加注意力
+        return y
+
+    def forward_split(self, x: torch.Tensor) -> torch.Tensor:
+        y = self.cv1(x).split((self.c, self.c), 1)
+        y = [y[0], y[1]]
+        y.extend(m(y[-1]) for m in self.m)
+        y = self.cv2(torch.cat(y, 1))
+        y = self.sa(y)
+        return y
