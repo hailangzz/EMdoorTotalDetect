@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/chenkejing/RKNNProjects/rknn_model_zoo/examples/blaze_hand_detect/build/cmake_install.cmake",
+		"/home/chenkejing/RKNNProjects/rknn_model_zoo/examples/blaze_hand_detect/build/3rdparty.out/cmake_install.cmake",
+		"/home/chenkejing/RKNNProjects/rknn_model_zoo/examples/blaze_hand_detect/build/utils.out/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
