@@ -24,6 +24,8 @@
 #include "image_utils.h"
 #include "file_utils.h"
 #include "image_drawing.h"
+#include "transform_coordinates.h"
+#include "carpet_detect_interface.h"
 
 #if defined(RV1106_1103) 
     #include "dma_alloc.hpp"
@@ -32,36 +34,8 @@
 #include <sys/time.h>
 
 
-
 double __get_us(struct timeval t) { return (t.tv_sec * 1000000 + t.tv_usec); }
 
-
-// 保存配置文件路径
-static std::string& getConfigPath() {
-    static std::string config_path = "./config/cfg.txt";  // 默认路径
-    return config_path;
-}
-
-
-// 配置读取函数
-static ConfigInfo& getConfig()
-{
-    static ConfigInfo config = readConfig(getConfigPath().c_str());
-    return config;
-}
-
-
-// ⭐给调用者的接口：设置配置文件路径
-void hand_detect_set_config_path(const std::string& path) {
-    getConfigPath() = path;
-}
-
-
-static Detector& getDetector()
-{
-    static Detector detector(getConfig());
-    return detector;
-}
 
 /*-------------------------------------------
                   Main Function
@@ -70,14 +44,18 @@ int main(int argc, char **argv)
 {
     struct timeval start_time, stop_time;
 
-    Detector& detector = getDetector();
+    ConfigInfo config_info = readConfig("./config/cfg.txt");
+    init_post_process();
+    Detector detector(config_info);
+    CameraParameters camera_parameters(config_info);
 
-    std::string image_path = "./model/wire.jpg";
+
+    std::string image_path = "./model/carpet.jpg";
     image_buffer_t src_image;
     memset(&src_image, 0, sizeof(image_buffer_t));
     int ret = read_image(image_path.c_str(), &src_image);
 
-#if defined(RV1106_1103) 
+#if defined(RV1106_1103)
     //RV1106 rga requires that input and output bufs are memory allocated by dma
     ret = dma_buf_alloc(RV1106_CMA_HEAP_PATH, src_image.size, &rknn_app_ctx.img_dma_buf.dma_buf_fd, 
                        (void **) & (rknn_app_ctx.img_dma_buf.dma_buf_virt_addr));
@@ -119,12 +97,17 @@ int main(int argc, char **argv)
                det_result->box.left, det_result->box.top,
                det_result->box.right, det_result->box.bottom,
                det_result->prop);
+        
         int x1 = det_result->box.left;
         int y1 = det_result->box.top;
         int x2 = det_result->box.right;
         int y2 = det_result->box.bottom;
 
         draw_rectangle(&src_image, x1, y1, x2 - x1, y2 - y1, COLOR_BLUE, 3);
+        
+        printf("finish draw_rectangle!!!!! \n");
+        // camera_parameters.ObjectboxToCameraXYZ(od_results.results[i].box, od_results.results[i].camera_coordinates);
+        camera_parameters.ObjectboxToCameraXYZ(det_result->box, det_result->camera_coordinates);
 
         sprintf(text, "%s %.1f%%", coco_cls_to_name(det_result->cls_id), det_result->prop * 100);
         draw_text(&src_image, text, x1, y1 - 20, COLOR_RED, 10);
@@ -133,7 +116,8 @@ int main(int argc, char **argv)
     write_image("out.png", &src_image);
 
 out:
-    
+    deinit_post_process();
+
     if (src_image.virt_addr != NULL)
     {
 #if defined(RV1106_1103) 

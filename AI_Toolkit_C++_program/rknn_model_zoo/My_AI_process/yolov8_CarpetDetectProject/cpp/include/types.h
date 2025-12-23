@@ -40,5 +40,13 @@ struct ConfigInfo {
     int input_height;
     float score_threshold;
     int max_frame_threshold;
+    
+    float camera_fx;
+    float camera_fy;
+    float camera_cx;
+    float camera_cy;
+    float camera_H;
+    float camera_pitch;
 
 };
+

@@ -20,6 +20,8 @@ typedef struct {
     image_rect_t box;
     float prop;
     int cls_id;
+    box_camera_coordinates camera_coordinates;   //新增相机坐标信息
+
 } object_detect_result;
 
 typedef struct {
