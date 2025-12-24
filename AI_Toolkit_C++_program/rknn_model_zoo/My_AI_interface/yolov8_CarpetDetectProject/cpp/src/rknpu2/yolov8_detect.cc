@@ -28,13 +28,21 @@ ConfigInfo readConfig(const std::string& filename) {
     cfg_values.score_threshold = std::stof(config["score_threshold"]); // 输入图片尺寸
     cfg_values.max_frame_threshold = std::stoi(config["max_frame_threshold"]);
 
+    //相机参数配置：
+    cfg_values.camera_fx = std::stof(config["camera_fx"]); 
+    cfg_values.camera_fy = std::stof(config["camera_fy"]); 
+    cfg_values.camera_cx = std::stof(config["camera_cx"]); 
+    cfg_values.camera_cy = std::stof(config["camera_cy"]); 
+    cfg_values.camera_H = std::stof(config["camera_H"]); 
+    cfg_values.camera_pitch = std::stof(config["camera_pitch"]);
+
     return cfg_values;
 }
 
 // 析构函数释放 RKNN 资源
 Detector::Detector(const ConfigInfo& config) {
     memset(&rknn_app_ctx_, 0, sizeof(rknn_app_context_t));
-    init_post_process();
+
     init_yolov8_model(config.model_path.c_str());
 }
 
@@ -47,7 +55,6 @@ Detector::~Detector() {
             printf("release_yolov8_model fail! ret=%d\n", ctx_);
         }
     }
-    deinit_post_process();
     // if (src_image_.virt_addr != NULL)
     // {
     //     #if defined(RV1106_1103) 
@@ -113,11 +120,11 @@ int Detector::init_yolov8_model(const char *model_path)
             printf("rknn_query fail! ret=%d\n", ret);
             return -1;
         }
-        dump_tensor_attr(&(input_attrs[i]));
+        // dump_tensor_attr(&(input_attrs[i]));
     }
 
     // Get Model Output Info
-    printf("output tensors:\n");
+    // printf("output tensors:\n");
     rknn_tensor_attr output_attrs[io_num.n_output];
     memset(output_attrs, 0, sizeof(output_attrs));
     for (int i = 0; i < io_num.n_output; i++)
@@ -129,7 +136,7 @@ int Detector::init_yolov8_model(const char *model_path)
             printf("rknn_query fail! ret=%d\n", ret);
             return -1;
         }
-        dump_tensor_attr(&(output_attrs[i]));
+        // dump_tensor_attr(&(output_attrs[i]));  //输出推理结果
     }
 
     // Set to context
@@ -217,8 +224,10 @@ int Detector::inference_yolov8_model(image_buffer_t *img, object_detect_result_l
     dst_img.width = rknn_app_ctx_.model_width;
     dst_img.height = rknn_app_ctx_.model_height;
     dst_img.format = IMAGE_FORMAT_RGB888;
+    // dst_img.format = IMAGE_FORMAT_RGBA8888;
     dst_img.size = get_image_size(&dst_img);
     dst_img.virt_addr = (unsigned char *)malloc(dst_img.size);
+
     if (dst_img.virt_addr == NULL)
     {
         printf("malloc buffer size:%d fail!\n", dst_img.size);

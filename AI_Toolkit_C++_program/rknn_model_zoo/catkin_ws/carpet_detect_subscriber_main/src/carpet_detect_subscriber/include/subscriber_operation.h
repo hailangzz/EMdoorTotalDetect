@@ -41,6 +41,7 @@ private:
     std::mutex frame_mutex_;
     std::condition_variable frame_cv_;
     bool has_new_frame_;
+    ObjectCameraDetectResult camera_coordinates_results_[64]; // 最多存 64 个检测目标的相机坐标值
 
 };
 

@@ -180,7 +180,8 @@ int inference_yolov8_model(rknn_app_context_t *app_ctx, image_buffer_t *img, obj
     // Pre Process
     dst_img.width = app_ctx->model_width;
     dst_img.height = app_ctx->model_height;
-    dst_img.format = IMAGE_FORMAT_RGB888;
+    // dst_img.format = IMAGE_FORMAT_RGB888;
+    dst_img.format = IMAGE_FORMAT_RGBA8888;
     dst_img.size = get_image_size(&dst_img);
     dst_img.virt_addr = (unsigned char *)malloc(dst_img.size);
     if (dst_img.virt_addr == NULL)

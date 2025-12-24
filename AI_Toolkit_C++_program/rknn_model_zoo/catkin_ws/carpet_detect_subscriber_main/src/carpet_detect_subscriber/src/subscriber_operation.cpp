@@ -8,7 +8,7 @@ CarpetDetectNode::CarpetDetectNode(ros::NodeHandle& nh)
       running_ = true;
 
       /* 初始化模型 */
-      if (!carpet_model_init("/home/robot/models/yolov8.rknn"))
+      if (!carpet_model_init("./config/cfg.txt"))
       {
           ROS_FATAL("Failed to init carpet model");
           throw std::runtime_error("model init failed");
@@ -41,7 +41,7 @@ void CarpetDetectNode::imageCallback(const sensor_msgs::ImageConstPtr& msg)
     {
         try
         {
-            cv::Mat img = cv_bridge::toCvShare(msg, "bgr8")->image;
+            cv::Mat img = cv_bridge::toCvShare(msg, "rgb8")->image;
 
             {
                 std::lock_guard<std::mutex> lock(frame_mutex_);
@@ -80,7 +80,8 @@ void CarpetDetectNode::inferenceLoop()
         }
 
         ROS_INFO("carpet_detect_infer begin");
-        carpet_detect_infer(img);
+        carpet_detect_infer(img,camera_coordinates_results_);
+        ROS_INFO("camera_coordinates_results_ prop :%f",camera_coordinates_results_[0].prop);
         ROS_INFO("carpet_detect_infer finished");
     }
 
