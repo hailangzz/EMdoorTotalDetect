@@ -1,3 +1,4 @@
+## #https://github.com/hailangzz/rk3588-convert-to-rknn/tree/master
 import math
 import torch
 from ultralytics.utils.tal import make_anchors
@@ -48,7 +49,8 @@ def segment_forward(self, x):
     p = self.proto(x[0])  # mask protos
     bs = p.shape[0]  # batch size
     mc = [self.cv4[i](x[i]) for i in range(self.nl)]
-    x = self.detect(self, x)
+    # x = self.detect(self, x)
+    x = detect_forward(self, x)
     bo = len(x) // 3
     relocated = []
     for i in range(len(mc)):

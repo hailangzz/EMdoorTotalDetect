@@ -1,6 +1,8 @@
 import os
 from ultralytics import YOLO
 import cv2
+import argparse
+
 
 def run_inference(model_path, imgs_dir, save_dir):
     # 加载模型
@@ -45,9 +47,20 @@ def run_inference(model_path, imgs_dir, save_dir):
         print(f"> Saved: {save_path}")
 
 
-if __name__ == "__main__":
-    model_path = "/home/chenkejing/PycharmProjects/ultralytics/runs/my_carpet_exp/yolov8_focus_v12/weights/best.pt"         # 修改为你的模型路径
-    imgs_dir = "/home/chenkejing/PycharmProjects/ultralytics/images_mode_test/carpet_images_test"             # 输入图片目录
-    save_dir = "./results/carpet"            # 结果输出目录
+def parse_args():
+    parser = argparse.ArgumentParser(description="YOLO Inference Script")
+    parser.add_argument("--model_path", type=str, required=True, help="Path to the trained YOLO model")
+    parser.add_argument("--imgs_dir", type=str, required=True, help="Directory containing the images to infer")
+    parser.add_argument("--save_dir", type=str, required=True, help="Directory to save the inference results")
+    return parser.parse_args()
 
-    run_inference(model_path, imgs_dir, save_dir)
+
+if __name__ == "__main__":
+    # model_path = "/home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/runs/my_carpet_exp/yolov8_focus_sa_v2/weights/best.pt"         # 修改为你的模型路径
+    # imgs_dir = "/home/chenkejing/PycharmProjects/ultralytics/images_mode_test/carpet_images_test"             # 输入图片目录
+    # save_dir = "./results/carpet"            # 结果输出目录
+    # run_inference(model_path, imgs_dir, save_dir)
+
+    args = parse_args()
+    run_inference(args.model_path, args.imgs_dir, args.save_dir)
+    # python predict_detect_images.py --model_path /home/chenkejing/PycharmProjects/ultralytics/Myself_train_model/runs/my_carpet_exp/yolov8_focus_sa_v2/weights/best.pt --imgs_dir /home/chenkejing/PycharmProjects/ultralytics/images_mode_test/carpet_images_test --save_dir ./results/carpet
