@@ -17,6 +17,28 @@ def mask_touch_border(mask: np.ndarray) -> bool:
     )
 
 
+def has_holes(mask: np.ndarray) -> bool:
+    """
+    检测 mask 是否包含内部孔洞（如圆环）
+    使用 RETR_CCOMP 可检测父子轮廓关系
+    """
+    mask_uint8 = mask.astype(np.uint8)
+    contours, hierarchy = cv2.findContours(
+        mask_uint8,
+        cv2.RETR_CCOMP,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    if hierarchy is None:
+        return False
+
+    # hierarchy[0][i][3] != -1 表示该轮廓有父轮廓 → 是洞
+    for h in hierarchy[0]:
+        if h[3] != -1:
+            return True
+    return False
+    
+
 def safe_find_contours(mask: np.ndarray):
     """
     对 mask 做 padding，避免贴边轮廓断裂
@@ -106,9 +128,9 @@ def parse_mask_to_coco(
     }
 
     # --------------------------------
-    # 1️⃣ 贴边 mask → 强制 RLE
+    # ⭐ 1️⃣ 贴边 或 有孔洞 → 强制 RLE
     # --------------------------------
-    if mask_touch_border(image_mask):
+    if mask_touch_border(image_mask) or has_holes(image_mask):
         poly = False
 
     # --------------------------------
@@ -130,7 +152,6 @@ def parse_mask_to_coco(
         if contour.shape[0] < 3:
             continue
 
-        # (row, col) → (x, y)
         contour = np.flip(contour, axis=1)
         seg = contour.ravel().tolist()
 
@@ -138,11 +159,9 @@ def parse_mask_to_coco(
         sc = simplify_coords_vwp(sc, 2)
         sc = unbunch_coords(sc)
 
-        # COCO polygon 至少 3 点（6 数）
         if len(sc) < 6:
             continue
 
-        # 强制闭合 polygon
         if sc[:2] != sc[-2:]:
             sc += sc[:2]
 
