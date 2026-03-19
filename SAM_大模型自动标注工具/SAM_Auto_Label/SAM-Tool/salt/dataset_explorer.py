@@ -7,6 +7,7 @@ import numpy as np
 from simplification.cutil import simplify_coords_vwp
 import os, cv2, copy
 from distinctipy import distinctipy
+import re
 
 def mask_touch_border(mask: np.ndarray) -> bool:
     return (
@@ -183,10 +184,18 @@ def parse_mask_to_coco(
 class DatasetExplorer:
     def __init__(self, dataset_folder, categories=None, coco_json_path=None):
         self.dataset_folder = dataset_folder
-        self.image_names = [
-            f for f in os.listdir(os.path.join(dataset_folder, "images"))
-            if f.endswith((".jpg", ".png"))
-        ]
+
+        def natural_key(s):
+            return [int(text) if text.isdigit() else text.lower()
+                    for text in re.split('([0-9]+)', s)]
+
+        self.image_names = sorted(
+            [f for f in os.listdir(os.path.join(dataset_folder, "images"))
+             if f.endswith((".jpg", ".png"))],
+            key=natural_key
+        )
+
+
         self.coco_json_path = coco_json_path
 
         if not os.path.exists(coco_json_path):
@@ -194,6 +203,8 @@ class DatasetExplorer:
 
         with open(coco_json_path, "r") as f:
             self.coco_json = json.load(f)
+        
+        self.coco_json["images"] = sorted(self.coco_json["images"],key=lambda x: natural_key(x["file_name"]))
 
         # 初始化 annotations_by_image_id
         self.annotations_by_image_id = {}
